@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant Orch as Orchestrator
+    participant SA as SchemaAgent
+    participant LLM as GPT-4o
+    participant DB as Database
+
+    Orch->>SA: run(session)
+    SA->>SA: Build system prompt:\nYou are an API schema expert.\nOutput valid OpenAPI-compatible JSON.
+    SA->>SA: Build user prompt with extracted_schema content
+    SA->>LLM: chat_json(system, user, max_tokens=4096)
+    LLM-->>SA: JSON response
+
+    alt Valid JSON returned
+        SA->>SA: Parse and normalize response
+        SA->>SA: snake_case field names
+        SA->>SA: Fill missing version = 1.0.0
+        SA->>SA: Ensure each endpoint has input_schema
+        SA->>DB: UPDATE session\ndraft_api = {name, description, base_url,\nversion, auth_type,\nendpoints with name path method input_schema output_schema}
+        SA-->>Orch: done → CONFIDENCE_SCORING
+    else LLM error or rate limit
+        SA->>DB: UPDATE state = FAILED\nerror_log.append({step, error})
+        SA-->>Orch: failed
+    end

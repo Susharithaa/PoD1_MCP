@@ -1,0 +1,42 @@
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant Auth as /api/auth
+    participant DB as Database
+
+    rect rgb(30,40,80)
+        Note over User,DB: Registration
+        User->>FE: Submit register form
+        FE->>Auth: POST /api/auth/register {email, password, full_name}
+        Auth->>Auth: Rate limit check (5/min)
+        Auth->>DB: SELECT COUNT(*) FROM users
+        DB-->>Auth: count = 0 (first user)
+        Auth->>Auth: bcrypt.hash(password)
+        Auth->>DB: INSERT user (role=admin, is_active=true)
+        Auth->>Auth: create_access_token(user_id, exp=7d)
+        Auth-->>FE: {access_token, user{id, email, role:admin}}
+        FE->>FE: Store token in localStorage
+        FE-->>User: Redirect to Home
+    end
+
+    rect rgb(20,60,40)
+        Note over User,DB: Login
+        User->>FE: Submit login form
+        FE->>Auth: POST /api/auth/login {email, password}
+        Auth->>Auth: Rate limit check (10/min)
+        Auth->>DB: SELECT user WHERE email=?
+        DB-->>Auth: user row
+        Auth->>Auth: bcrypt.verify(password, hash)
+        Auth->>Auth: create_access_token(user_id)
+        Auth-->>FE: {access_token}
+        FE-->>User: Redirect to Home
+    end
+
+    rect rgb(60,30,30)
+        Note over User,DB: Every protected request
+        FE->>Auth: GET /api/auth/me + Bearer token
+        Auth->>Auth: jwt.decode(token, JWT_SECRET)
+        Auth->>DB: SELECT user WHERE id=sub
+        DB-->>Auth: user {id, email, role, is_active}
+        Auth-->>FE: UserResponse
+    end

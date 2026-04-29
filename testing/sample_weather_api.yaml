@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Sample Weather API
+  version: 1.0.0
+  description: A tiny API for testing MCP Hub document upload.
+servers:
+  - url: https://api.example.com
+paths:
+  /weather/current:
+    get:
+      summary: Get current weather for a city
+      operationId: getCurrentWeather
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+          description: City name, for example Tokyo or Bengaluru.
+        - name: units
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [metric, imperial]
+            default: metric
+      responses:
+        "200":
+          description: Current weather details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  city:
+                    type: string
+                  temperature:
+                    type: number
+                  condition:
+                    type: string
+                  humidity:
+                    type: integer
+  /weather/forecast:
+    get:
+      summary: Get a multi-day weather forecast
+      operationId: getWeatherForecast
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 7
+            default: 3
+      responses:
+        "200":
+          description: Forecast list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  city:
+                    type: string
+                  forecast:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        high:
+                          type: number
+                        low:
+                          type: number
+                        condition:
+                          type: string

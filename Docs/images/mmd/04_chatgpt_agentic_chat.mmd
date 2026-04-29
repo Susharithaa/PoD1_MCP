@@ -1,0 +1,49 @@
+sequenceDiagram
+    actor User
+    participant FE as ChatGPTHub
+    participant CGpt as /api/chatgpt
+    participant Trans as openai_translator
+    participant GPT as GPT-4o
+    participant ExtAPI as External API
+    participant DB as Database
+
+    rect rgb(20,40,80)
+        Note over User,DB: Connect API as Tool
+        User->>FE: Click Connect on an API
+        FE->>CGpt: POST /api/chatgpt/connect/{api_id}
+        CGpt->>DB: INSERT ChatGPTConnection {api_id, user_id, is_active=true}
+        CGpt-->>FE: {connected:true, tool_count:N}
+        FE-->>User: API shows green dot
+    end
+
+    rect rgb(20,60,40)
+        Note over User,DB: Agentic Chat (up to 5 iterations)
+        User->>FE: What's the weather in NYC?
+        FE->>CGpt: POST /api/chatgpt/chat {message}
+        CGpt->>DB: SELECT active ChatGPTConnections for user
+        CGpt->>Trans: api_to_tools(apis[]) → OpenAI function schema[]
+        CGpt->>CGpt: _is_query_relevant(message, tools) keyword check
+
+        loop iteration 1 to 5
+            CGpt->>GPT: chat.completions.create(messages, tools, tool_choice=auto)
+            GPT-->>CGpt: tool_call {name, arguments}
+            CGpt->>Trans: resolve_tool_call(name, db) → ApiDefinition + ApiEndpoint
+            CGpt->>CGpt: _missing_required_params(endpoint, args)
+
+            alt missing params
+                CGpt->>GPT: tool result = MISSING_REQUIRED_PARAMETERS
+            else all params present
+                CGpt->>ExtAPI: HTTP request {base_url + path + decrypted auth}
+                ExtAPI-->>CGpt: HTTP response (max 2000 chars)
+                CGpt->>DB: INSERT ToolCallLog {endpoint, args, result, success}
+                CGpt->>GPT: tool result = response body
+            end
+
+            alt GPT done — no more tool_calls
+                GPT-->>CGpt: final text answer
+            end
+        end
+
+        CGpt-->>FE: {response, tool_calls[], model:gpt-4o}
+        FE-->>User: Show answer + expandable tool call chain
+    end

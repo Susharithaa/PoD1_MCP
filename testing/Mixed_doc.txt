@@ -1,0 +1,124 @@
+# MCP Hub Multi-API Test Specification
+
+apis:
+
+# ========================
+
+# Langfuse APIs
+
+# ========================
+
+* name: get_annotation_queues
+  description: Get all annotation queues
+  method: GET
+  endpoint: /annotation-queues
+  params:
+  page: integer
+  limit: integer
+
+* name: create_annotation_queue
+  description: Create a new annotation queue
+  method: POST
+  endpoint: /annotation-queues
+  params: {}
+
+* name: get_annotation_queue_by_id
+  description: Get annotation queue by ID
+  method: GET
+  endpoint: /annotation-queues/{queueId}
+  params:
+  queueId: string
+
+* name: get_queue_items
+  description: Get items in a queue
+  method: GET
+  endpoint: /annotation-queues/{queueId}/items
+  params:
+  queueId: string
+  status: string
+  page: integer
+  limit: integer
+
+* name: add_item_to_queue
+  description: Add item to queue
+  method: POST
+  endpoint: /annotation-queues/{queueId}/items
+  params:
+  queueId: string
+
+* name: get_queue_item
+  description: Get specific item
+  method: GET
+  endpoint: /annotation-queues/{queueId}/items/{itemId}
+  params:
+  queueId: string
+  itemId: string
+
+* name: update_queue_item
+  description: Update queue item
+  method: PUT
+  endpoint: /annotation-queues/{queueId}/items/{itemId}
+  params:
+  queueId: string
+  itemId: string
+
+* name: delete_queue_item
+  description: Delete queue item
+  method: DELETE
+  endpoint: /annotation-queues/{queueId}/items/{itemId}
+  params:
+  queueId: string
+  itemId: string
+
+# ========================
+
+# JSONPlaceholder APIs
+
+# ========================
+
+* name: get_posts
+  description: Get all posts
+  method: GET
+  endpoint: https://jsonplaceholder.typicode.com/posts
+
+* name: create_post
+  description: Create a post
+  method: POST
+  endpoint: https://jsonplaceholder.typicode.com/posts
+  body:
+  title: string
+  body: string
+  userId: integer
+
+* name: update_post
+  description: Update a post
+  method: PUT
+  endpoint: https://jsonplaceholder.typicode.com/posts/{id}
+  params:
+  id: integer
+
+* name: delete_post
+  description: Delete a post
+  method: DELETE
+  endpoint: https://jsonplaceholder.typicode.com/posts/{id}
+  params:
+  id: integer
+
+# ========================
+
+# HTTPBin APIs
+
+# ========================
+
+* name: httpbin_get
+  description: Test GET request
+  method: GET
+  endpoint: https://httpbin.org/get
+
+* name: httpbin_post
+  description: Test POST request
+  method: POST
+  endpoint: https://httpbin.org/post
+  body:
+  name: string
+  value: string

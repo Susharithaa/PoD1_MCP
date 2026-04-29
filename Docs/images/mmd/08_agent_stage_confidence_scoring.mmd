@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant Orch as Orchestrator
+    participant CA as ConfidenceAgent
+    participant LLM as GPT-4o
+    participant DB as Database
+
+    Orch->>CA: run(session)
+    CA->>CA: Build prompt to score each field\nFields: name, description, base_url,\nversion, auth_type,\neach endpoint name path method params
+    CA->>LLM: chat_json(system, user, max_tokens=2048)
+    LLM-->>CA: confidence_map JSON
+
+    Note over CA: Example output structure
+    Note over CA: name → status HIGH\nbase_url → status LOW suggestion verify URL\nendpoints.0.path → status HIGH\nendpoints.0.params.0 → status MEDIUM
+
+    CA->>DB: UPDATE session\nconfidence_map = scored fields
+    CA->>DB: UPDATE state = HITL_PENDING
+    CA-->>Orch: done → HITL_PENDING pause for human
+
+    Note over DB: HIGH = GREEN dot on frontend\nMEDIUM = AMBER dot on frontend\nLOW = RED dot on frontend\nMISSING = GREY dot on frontend

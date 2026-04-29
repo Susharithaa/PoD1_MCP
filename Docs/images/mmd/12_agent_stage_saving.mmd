@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant Orch as Orchestrator
+    participant AS as ApiSaver
+    participant DB as Database
+
+    Orch->>AS: run(session)
+    AS->>AS: api_data = session.final_api
+
+    AS->>DB: INSERT ApiDefinition\nid = uuid4\nname, description, base_url\nversion, visibility = PRIVATE\nuser_id = session.user_id\nsource_session_id = session.id
+
+    loop for each endpoint in api_data.endpoints
+        AS->>AS: auth_store = merge(\napi-level auth,\nendpoint-level auth override\n)
+        AS->>AS: encrypted = encrypt_creds(auth_store)
+        AS->>AS: Build input_schema from parameters list
+        AS->>DB: INSERT ApiEndpoint\nid = uuid4\napi_definition_id = api.id\nname, path, method\ndescription, input_schema\nauth_credentials = encrypted
+    end
+
+    AS->>DB: UPDATE AgentSession\nstate = SAVED\napi_definition_id = api.id
+
+    AS-->>Orch: done
+
+    Note over DB: ApiDefinition now visible in\nRegistry page and ChatGPT Tools page

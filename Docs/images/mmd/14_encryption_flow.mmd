@@ -1,0 +1,19 @@
+flowchart LR
+    subgraph WRITE["Writing Credentials"]
+        RAW["auth_credentials\ntype: bearer\ntoken: xyz"]
+        -->|encrypt_creds| DERIVE["SHA-256 digest\nof ENCRYPTION_KEY string"]
+        -->|base64url encode| FERNET_KEY["32-byte Fernet key"]
+        -->|Fernet.encrypt| STORED["Stored in DB\n{_enc: gAAAAA...}"]
+    end
+
+    subgraph READ["Reading Credentials"]
+        DB_VAL["Read from DB\n{_enc: gAAAAA...}"]
+        -->|detect _enc key| FERNET2["Fernet.decrypt()"]
+        -->|json.loads| PLAIN["auth_credentials\ntype: bearer\ntoken: xyz"]
+        -->|_build_auth| HEADERS["httpx.BasicAuth\nOR Authorization: Bearer xyz\nOR X-API-Key: xyz"]
+    end
+
+    subgraph COMPAT["Backwards-Compatible Passthrough"]
+        OLD["Old unencrypted data\ntype: bearer\ntoken: xyz"]
+        -->|no _enc key detected| PASS["Returned as-is\nno decryption needed"]
+    end

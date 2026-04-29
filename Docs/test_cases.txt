@@ -1,0 +1,196 @@
+ Scenario 1 — Slack Notification Service (Chat Builder)
+
+  Paste this into Chat Builder:
+  I need an API to send Slack notifications. It should have an endpoint to post a message to a specific channel using a webhook URL.
+  The message should support text, an optional title, and an optional color for the sidebar (good/warning/danger). Also need an
+  endpoint to list available channels from a Slack workspace using a bot token.
+
+  What to check in HITL Validator:
+  - name → "Slack Notification Service"
+  - 2 endpoints: POST /notify and GET /channels
+  - auth_type on channels endpoint should be "Bearer" or "bot_token"
+  - input_schema on /notify should include channel, text, title, color
+  - Confidence on base_url will be LOW/MISSING — type: https://hooks.slack.com/services
+
+  ---
+  Scenario 2 — E-commerce Order Management (Doc Upload)
+
+  Create a file orders-api.md with this content:
+
+  # Order Management API
+
+  Base URL: https://api.myshop.com/v2
+
+  ## Authentication
+  All endpoints require Bearer token in Authorization header.
+
+  ## Endpoints
+
+  ### GET /orders
+  Retrieve a paginated list of orders.
+  Query params: page (int), limit (int, max 100), status (enum: pending/shipped/delivered/cancelled), customer_id (string, optional)
+  Returns: { orders: [], total: int, page: int }
+
+  ### GET /orders/{order_id}
+  Get a single order by ID. Returns full order details including line items.
+
+  ### POST /orders
+  Create a new order.
+  Body: { customer_id: string (required), items: [{ product_id: string, quantity: int, price: float }], shipping_address: { street,
+  city, zip, country } }
+
+  ### PATCH /orders/{order_id}/status
+  Update order status.
+  Body: { status: enum(pending/shipped/delivered/cancelled), tracking_number: string (optional) }
+
+  ### DELETE /orders/{order_id}
+  Cancel an order. Only allowed when status is "pending".
+
+  Upload this file via Doc Upload.
+
+  What to check:
+  - 5 endpoints parsed correctly
+  - GET /orders has query params in input_schema
+  - POST /orders has nested items array schema
+  - PATCH endpoint captures the enum values for status
+  - All should show HIGH confidence since the spec is explicit
+
+  ---
+  Scenario 3 — Weather Data Aggregator (Chat Builder)
+
+  Paste this into Chat Builder:
+  Build an API wrapper for weather data. I need three endpoints: one to get current weather by city name or lat/lng coordinates, one
+  to get a 7-day forecast for a location, and one to get historical weather data between two dates for a given location. The API
+  should support both metric and imperial units via a query parameter. Authentication uses an API key passed as a header called
+  X-Weather-Key.
+
+  What to check:
+  - base_url will be MISSING — fill in something like https://weather.yourapp.com/v1
+  - 3 endpoints: GET /current, GET /forecast, GET /historical
+  - units query param appears in input_schema
+  - auth_type = "api_key" with header name X-Weather-Key
+  - Historical endpoint should have start_date/end_date in schema
+
+  ---
+  Scenario 4 — User Authentication Service (Doc Upload)
+
+  Create auth-api.yaml:
+
+  openapi: "3.0.0"
+  info:
+    title: Auth Service API
+    version: "1.0.0"
+    description: JWT-based authentication service for microservices
+
+  servers:
+    - url: https://auth.internal.company.com/api/v1
+
+  paths:
+    /auth/register:
+      post:
+        summary: Register new user
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email, password, name]
+                properties:
+                  email:
+                    type: string
+                    format: email
+                  password:
+                    type: string
+                    minLength: 8
+                  name:
+                    type: string
+        responses:
+          "201":
+            description: User created
+
+    /auth/login:
+      post:
+        summary: Login and get JWT tokens
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email, password]
+                properties:
+                  email:
+                    type: string
+                  password:
+                    type: string
+        responses:
+          "200":
+            description: Returns access_token and refresh_token
+
+    /auth/refresh:
+      post:
+        summary: Refresh access token
+        security:
+          - bearerAuth: []
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  refresh_token:
+                    type: string
+
+    /auth/logout:
+      post:
+        summary: Invalidate tokens
+        security:
+          - bearerAuth: []
+
+  What to check:
+  - base_url auto-filled from servers → HIGH confidence
+  - 4 endpoints detected
+  - input_schema for /register has email/password/name with types
+  - /refresh and /logout have auth flagged as Bearer
+  - Overall confidence should be 80%+ since this is a structured OpenAPI spec
+
+  ---
+  Scenario 5 — CRM Lead Scoring (Chat Builder)
+
+  Paste this into Chat Builder:
+  I need a CRM lead scoring API. It should expose an endpoint to submit a new lead with fields like company name, contact email,
+  annual revenue, number of employees, and industry vertical. The system should return a lead score from 0-100 and a tier
+  (hot/warm/cold). There should be another endpoint to retrieve lead score history for a contact by their email. And a third endpoint
+   to update scoring weights for different criteria — this one should require admin authentication via a separate admin API key
+  header.
+
+  What to check:
+  - 3 endpoints: POST /leads, GET /leads/{email}/history, PUT /scoring-weights
+  - POST /leads input schema: company_name, contact_email, annual_revenue, employee_count, industry
+  - Response mentions score (0-100) and tier — check if agent captured it in description
+  - PUT /scoring-weights should have a different auth_type (admin key) — LOW/MEDIUM confidence here since it's ambiguous
+  - Edit the base_url to https://crm.yourcompany.com/api/v1 before saving
+
+  ---
+  What to Verify Across All Scenarios
+
+  ┌────────────────────┬───────────────────────────────────────────────────────────────────────────────┐
+  │       Stage        │                                What to confirm                                │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Chat/Upload submit │ Redirects to /validate/:sessionId immediately                                 │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Processing spinner │ Cycles through CLASSIFYING → PARSING → SCHEMA_GENERATING → CONFIDENCE_SCORING │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ HITL form          │ All fields pre-filled; colored dots match quality of input                    │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Edit & Save        │ Changing a field and clicking "Confirm & Save" works                          │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Registry           │ API appears with "Just saved" badge, expand shows all metadata                │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Delete             │ Delete button removes the card after reload                                   │
+  └────────────────────┴───────────────────────────────────────────────────────────────────────────────┘
+
+  Scenario 4 (OpenAPI YAML) should give you the highest confidence scores. Scenario 5 (ambiguous chat) should give the lowest — good
+  for testing the editing flow.

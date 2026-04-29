@@ -1,0 +1,26 @@
+flowchart TD
+    START([state = HITL_PENDING\nfrontend polls session]) --> LOAD
+
+    LOAD["Load session\ndraft_api + confidence_map"] --> DISPLAY
+
+    subgraph DISPLAY["Editor UI — HITLValidator Page"]
+        direction TB
+        F1["API Overview\nname · description · base_url · version"]
+        F2["Auth Config\nglobal or per-endpoint\nBasic · Bearer · API Key · Query Param"]
+        F3["Endpoints Editor\nmethod · path · name\nparameters add/remove/edit"]
+        F4["Confidence dot per field\nGREEN = HIGH   AMBER = MEDIUM   RED = LOW"]
+    end
+
+    DISPLAY --> USER_ACTION{User action}
+
+    USER_ACTION -->|Edit a field| EDIT["Update local form state\nDot updates to reflect confidence"]
+    EDIT --> USER_ACTION
+
+    USER_ACTION -->|Click Save| SUBMIT["POST /api/agent/{id}/hitl\n{edits, auth_credentials}"]
+    USER_ACTION -->|No changes needed| CONFIRM["POST /api/agent/{id}/confirm"]
+
+    SUBMIT --> ENCRYPT["Backend: encrypt_creds(auth_credentials)\nFernet symmetric encryption\nSHA-256 key derivation"]
+    CONFIRM --> MERGE
+
+    ENCRYPT --> MERGE["merge(draft_api, human_edits)\n→ session.final_api"]
+    MERGE --> NEXT([VALIDATING])

@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP Hub — Architecture Diagrams</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #6c8fff;
+      --accent2: #a78bfa;
+      --accent3: #34d399;
+      --accent4: #fb923c;
+      --accent5: #f472b6;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --danger: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 32px 24px;
+    }
+    h1 { font-size: 2rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+    h2 { font-size: 1.35rem; font-weight: 600; color: var(--accent2); margin: 48px 0 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 40px; }
+    .tab-row { display: flex; gap: 12px; margin-bottom: 32px; }
+    .tab {
+      padding: 10px 24px; border-radius: 8px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 600; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); transition: all 0.2s;
+    }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .diagram-section { display: none; }
+    .diagram-section.active { display: block; }
+
+    /* ─── SHARED DIAGRAM ELEMENTS ─── */
+    svg text { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ─── LEGEND ─── */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 20px; margin-top: 28px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.83rem; color: var(--muted); }
+    .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ─── DESCRIPTION CARDS ─── */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 32px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 20px;
+    }
+    .card-title { font-size: 0.85rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+    .card-body { font-size: 0.82rem; color: var(--muted); line-height: 1.55; }
+
+    svg { overflow: visible; }
+  </style>
+</head>
+<body>
+
+<h1>MCP Hub — Architecture Diagrams</h1>
+<p class="subtitle">Two-level system architecture: Service Level view and High-Level view</p>
+
+<div class="tab-row">
+  <div class="tab active" onclick="switchTab('level1')">Level 1 — Service Diagram</div>
+  <div class="tab" onclick="switchTab('level2')">Level 2 — High-Level Architecture</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LEVEL 1 — SERVICE LEVEL DIAGRAM
+══════════════════════════════════════════════════════════════ -->
+<div class="diagram-section active" id="tab-level1">
+  <h2>Level 1 — Service Level Diagram</h2>
+
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 960" width="100%">
+    <defs>
+      <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#6c8fff" opacity="0.7"/>
+      </marker>
+      <marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#34d399" opacity="0.7"/>
+      </marker>
+      <marker id="arr3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#a78bfa" opacity="0.7"/>
+      </marker>
+      <marker id="arr4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#fb923c" opacity="0.7"/>
+      </marker>
+    </defs>
+
+    <!-- ── Background boxes ── -->
+    <!-- Frontend zone -->
+    <rect x="10" y="10" width="220" height="380" rx="12" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+    <text x="120" y="35" text-anchor="middle" fill="#8892a4" font-size="11" font-weight="600">FRONTEND (React SPA)</text>
+
+    <!-- Backend zone -->
+    <rect x="260" y="10" width="620" height="560" rx="12" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+    <text x="570" y="35" text-anchor="middle" fill="#8892a4" font-size="11" font-weight="600">BACKEND (FastAPI · port 8000)</text>
+
+    <!-- Database zone -->
+    <rect x="260" y="590" width="300" height="130" rx="12" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+    <text x="410" y="614" text-anchor="middle" fill="#8892a4" font-size="11" font-weight="600">DATA LAYER</text>
+
+    <!-- External zone -->
+    <rect x="900" y="10" width="285" height="560" rx="12" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+    <text x="1042" y="35" text-anchor="middle" fill="#8892a4" font-size="11" font-weight="600">EXTERNAL SERVICES</text>
+
+    <!-- Agent Pipeline sub-zone inside backend -->
+    <rect x="500" y="50" width="360" height="500" rx="10" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="680" y="73" text-anchor="middle" fill="#8892a4" font-size="10" font-weight="600">AGENT PIPELINE</text>
+
+    <!-- ══ FRONTEND SERVICES ══ -->
+    <!-- Pages -->
+    <rect x="25" y="50" width="190" height="26" rx="6" fill="#6c8fff22" stroke="#6c8fff" stroke-width="1"/>
+    <text x="120" y="68" text-anchor="middle" fill="#6c8fff" font-size="10.5" font-weight="600">Pages</text>
+
+    <rect x="30" y="84" width="180" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="97" text-anchor="middle" fill="#e2e8f0" font-size="9.5">ChatBuilder · DocUpload</text>
+
+    <rect x="30" y="106" width="180" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="119" text-anchor="middle" fill="#e2e8f0" font-size="9.5">HITLValidator · Registry</text>
+
+    <rect x="30" y="128" width="180" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="141" text-anchor="middle" fill="#e2e8f0" font-size="9.5">ChatGPTHub · Admin</text>
+
+    <!-- Context -->
+    <rect x="25" y="160" width="190" height="26" rx="6" fill="#a78bfa22" stroke="#a78bfa" stroke-width="1"/>
+    <text x="120" y="178" text-anchor="middle" fill="#a78bfa" font-size="10.5" font-weight="600">React Contexts</text>
+
+    <rect x="30" y="194" width="180" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="207" text-anchor="middle" fill="#e2e8f0" font-size="9.5">AuthContext · ThemeContext</text>
+
+    <rect x="30" y="216" width="180" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="229" text-anchor="middle" fill="#e2e8f0" font-size="9.5">UploadContext · LanguageContext</text>
+
+    <!-- HTTP -->
+    <rect x="25" y="250" width="190" height="26" rx="6" fill="#34d39922" stroke="#34d399" stroke-width="1"/>
+    <text x="120" y="268" text-anchor="middle" fill="#34d399" font-size="10.5" font-weight="600">HTTP Layer</text>
+
+    <rect x="30" y="284" width="180" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="297" text-anchor="middle" fill="#e2e8f0" font-size="9.5">Axios · TanStack React Query</text>
+
+    <!-- i18n -->
+    <rect x="25" y="318" width="190" height="26" rx="6" fill="#fb923c22" stroke="#fb923c" stroke-width="1"/>
+    <text x="120" y="336" text-anchor="middle" fill="#fb923c" font-size="10.5" font-weight="600">i18n</text>
+
+    <rect x="30" y="352" width="180" height="26" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="120" y="369" text-anchor="middle" fill="#e2e8f0" font-size="9.5">EN / ES / FR / ...</text>
+
+    <!-- ══ BACKEND SERVICES (left column) ══ -->
+    <!-- Routers -->
+    <rect x="275" y="50" width="200" height="26" rx="6" fill="#6c8fff22" stroke="#6c8fff" stroke-width="1"/>
+    <text x="375" y="68" text-anchor="middle" fill="#6c8fff" font-size="10.5" font-weight="600">API Routers</text>
+
+    <rect x="280" y="84" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="97" text-anchor="middle" fill="#e2e8f0" font-size="9.5">/api/auth  /api/auth/social</text>
+
+    <rect x="280" y="106" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="119" text-anchor="middle" fill="#e2e8f0" font-size="9.5">/api/agent  /api/registry</text>
+
+    <rect x="280" y="128" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="141" text-anchor="middle" fill="#e2e8f0" font-size="9.5">/api/chatgpt  /api/monitor</text>
+
+    <rect x="280" y="150" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="163" text-anchor="middle" fill="#e2e8f0" font-size="9.5">/api/subscription</text>
+
+    <!-- Auth Utils -->
+    <rect x="275" y="185" width="200" height="26" rx="6" fill="#f472b622" stroke="#f472b6" stroke-width="1"/>
+    <text x="375" y="203" text-anchor="middle" fill="#f472b6" font-size="10.5" font-weight="600">Auth &amp; Security</text>
+
+    <rect x="280" y="219" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="232" text-anchor="middle" fill="#e2e8f0" font-size="9.5">JWT · Passlib · OTP · Slowapi</text>
+
+    <rect x="280" y="241" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="254" text-anchor="middle" fill="#e2e8f0" font-size="9.5">AES-256 Encryption · OAuth2</text>
+
+    <!-- LLM Client -->
+    <rect x="275" y="276" width="200" height="26" rx="6" fill="#a78bfa22" stroke="#a78bfa" stroke-width="1"/>
+    <text x="375" y="294" text-anchor="middle" fill="#a78bfa" font-size="10.5" font-weight="600">LLM Client (llm/)</text>
+
+    <rect x="280" y="310" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="323" text-anchor="middle" fill="#e2e8f0" font-size="9.5">AsyncOpenAI Wrapper · GPT-4o</text>
+
+    <rect x="280" y="332" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="345" text-anchor="middle" fill="#e2e8f0" font-size="9.5">chat() · chat_json() · MOCK_LLM</text>
+
+    <!-- Tool Orchestrator -->
+    <rect x="275" y="367" width="200" height="26" rx="6" fill="#34d39922" stroke="#34d399" stroke-width="1"/>
+    <text x="375" y="385" text-anchor="middle" fill="#34d399" font-size="10.5" font-weight="600">Tool Executor (orchestrator/)</text>
+
+    <rect x="280" y="401" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="414" text-anchor="middle" fill="#e2e8f0" font-size="9.5">Parallel asyncio · Retry backoff</text>
+
+    <rect x="280" y="423" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="436" text-anchor="middle" fill="#e2e8f0" font-size="9.5">Auth inject · 15s timeout</text>
+
+    <!-- Context Layer -->
+    <rect x="275" y="458" width="200" height="26" rx="6" fill="#fb923c22" stroke="#fb923c" stroke-width="1"/>
+    <text x="375" y="476" text-anchor="middle" fill="#fb923c" font-size="10.5" font-weight="600">Context Layer (context/)</text>
+
+    <rect x="280" y="492" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="505" text-anchor="middle" fill="#e2e8f0" font-size="9.5">Session history · TTL 2h</text>
+
+    <rect x="280" y="514" width="190" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="375" y="527" text-anchor="middle" fill="#e2e8f0" font-size="9.5">System prompt builder</text>
+
+    <!-- ══ AGENT PIPELINE ══ -->
+    <!-- Orchestrator -->
+    <rect x="515" y="85" width="330" height="28" rx="6" fill="#6c8fff33" stroke="#6c8fff" stroke-width="1.5"/>
+    <text x="680" y="104" text-anchor="middle" fill="#6c8fff" font-size="11" font-weight="700">AgentOrchestrator (state machine)</text>
+
+    <!-- Classifier -->
+    <rect x="515" y="125" width="150" height="28" rx="6" fill="#22263a" stroke="#a78bfa" stroke-width="1"/>
+    <text x="590" y="144" text-anchor="middle" fill="#a78bfa" font-size="10">InputClassifier</text>
+
+    <!-- Parser -->
+    <rect x="515" y="165" width="150" height="28" rx="6" fill="#22263a" stroke="#a78bfa" stroke-width="1"/>
+    <text x="590" y="184" text-anchor="middle" fill="#a78bfa" font-size="10">ParsingAgent</text>
+
+    <!-- Doc utils -->
+    <rect x="515" y="205" width="150" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="590" y="224" text-anchor="middle" fill="#34d399" font-size="10">DocExtractor · SmartChunker</text>
+
+    <!-- Schema Agent -->
+    <rect x="515" y="245" width="150" height="28" rx="6" fill="#22263a" stroke="#a78bfa" stroke-width="1"/>
+    <text x="590" y="264" text-anchor="middle" fill="#a78bfa" font-size="10">SchemaAgent</text>
+
+    <!-- Det Extractor -->
+    <rect x="515" y="285" width="150" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="590" y="304" text-anchor="middle" fill="#34d399" font-size="10">DeterminsticExtractor</text>
+
+    <!-- Reconciliation -->
+    <rect x="690" y="125" width="150" height="28" rx="6" fill="#22263a" stroke="#a78bfa" stroke-width="1"/>
+    <text x="765" y="144" text-anchor="middle" fill="#a78bfa" font-size="10">ReconciliationAgent</text>
+
+    <!-- Confidence -->
+    <rect x="690" y="165" width="150" height="28" rx="6" fill="#22263a" stroke="#a78bfa" stroke-width="1"/>
+    <text x="765" y="184" text-anchor="middle" fill="#a78bfa" font-size="10">ConfidenceAgent</text>
+
+    <!-- HITL boundary -->
+    <rect x="515" y="325" width="330" height="22" rx="5" fill="#fb923c22" stroke="#fb923c" stroke-width="1" stroke-dasharray="4 3"/>
+    <text x="680" y="340" text-anchor="middle" fill="#fb923c" font-size="9.5" font-weight="600">HITL_PENDING — Human Review</text>
+
+    <!-- Schema Validator -->
+    <rect x="515" y="360" width="150" height="28" rx="6" fill="#22263a" stroke="#f472b6" stroke-width="1"/>
+    <text x="590" y="379" text-anchor="middle" fill="#f472b6" font-size="10">SchemaValidator</text>
+
+    <!-- EndpointValidator -->
+    <rect x="515" y="400" width="150" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="590" y="419" text-anchor="middle" fill="#34d399" font-size="10">EndpointValidator</text>
+
+    <!-- ApiTestAgent -->
+    <rect x="690" y="360" width="150" height="28" rx="6" fill="#22263a" stroke="#f472b6" stroke-width="1"/>
+    <text x="765" y="379" text-anchor="middle" fill="#f472b6" font-size="10">ApiTestAgent</text>
+
+    <!-- ApiSaver -->
+    <rect x="690" y="400" width="150" height="28" rx="6" fill="#22263a" stroke="#f472b6" stroke-width="1"/>
+    <text x="765" y="419" text-anchor="middle" fill="#f472b6" font-size="10">ApiSaver</text>
+
+    <!-- Translator -->
+    <rect x="515" y="450" width="325" height="28" rx="6" fill="#22263a" stroke="#fb923c" stroke-width="1"/>
+    <text x="677" y="469" text-anchor="middle" fill="#fb923c" font-size="10">OpenAI Translator (ApiDef → tool schema)</text>
+
+    <!-- Coverage -->
+    <rect x="515" y="490" width="325" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="677" y="509" text-anchor="middle" fill="#34d399" font-size="10">EndpointCoverage · CoverageReport</text>
+
+    <!-- ══ DATABASE ══ -->
+    <rect x="275" y="630" width="270" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="410" y="643" text-anchor="middle" fill="#e2e8f0" font-size="9.5">users · api_definitions · api_endpoints</text>
+
+    <rect x="275" y="652" width="270" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="410" y="665" text-anchor="middle" fill="#e2e8f0" font-size="9.5">agent_sessions · chatgpt_connections</text>
+
+    <rect x="275" y="674" width="270" height="18" rx="4" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="410" y="687" text-anchor="middle" fill="#e2e8f0" font-size="9.5">tool_call_logs · token_usage · auth_configs</text>
+
+    <!-- ══ EXTERNAL SERVICES ══ -->
+    <!-- OpenAI -->
+    <rect x="915" y="50" width="255" height="90" rx="8" fill="#a78bfa22" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="1042" y="74" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">OpenAI API</text>
+    <text x="1042" y="94" text-anchor="middle" fill="#8892a4" font-size="9.5">GPT-4o  ·  JSON mode</text>
+    <text x="1042" y="112" text-anchor="middle" fill="#8892a4" font-size="9.5">Schema enrichment · Tool calling</text>
+    <text x="1042" y="130" text-anchor="middle" fill="#8892a4" font-size="9.5">Agentic chat loop</text>
+
+    <!-- Google OAuth -->
+    <rect x="915" y="160" width="255" height="70" rx="8" fill="#6c8fff22" stroke="#6c8fff" stroke-width="1.5"/>
+    <text x="1042" y="184" text-anchor="middle" fill="#6c8fff" font-size="11" font-weight="600">Google OAuth2</text>
+    <text x="1042" y="204" text-anchor="middle" fill="#8892a4" font-size="9.5">Sign-in consent · User info API</text>
+    <text x="1042" y="220" text-anchor="middle" fill="#8892a4" font-size="9.5">Authorization code flow</text>
+
+    <!-- GitHub OAuth -->
+    <rect x="915" y="250" width="255" height="70" rx="8" fill="#6c8fff22" stroke="#6c8fff" stroke-width="1.5"/>
+    <text x="1042" y="274" text-anchor="middle" fill="#6c8fff" font-size="11" font-weight="600">GitHub OAuth2</text>
+    <text x="1042" y="294" text-anchor="middle" fill="#8892a4" font-size="9.5">Sign-in consent · User info API</text>
+    <text x="1042" y="310" text-anchor="middle" fill="#8892a4" font-size="9.5">Authorization code flow</text>
+
+    <!-- Gmail SMTP -->
+    <rect x="915" y="340" width="255" height="70" rx="8" fill="#34d39922" stroke="#34d399" stroke-width="1.5"/>
+    <text x="1042" y="364" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">Gmail SMTP</text>
+    <text x="1042" y="384" text-anchor="middle" fill="#8892a4" font-size="9.5">OTP email delivery</text>
+    <text x="1042" y="400" text-anchor="middle" fill="#8892a4" font-size="9.5">App password authentication</text>
+
+    <!-- Real-world APIs -->
+    <rect x="915" y="430" width="255" height="100" rx="8" fill="#fb923c22" stroke="#fb923c" stroke-width="1.5"/>
+    <text x="1042" y="454" text-anchor="middle" fill="#fb923c" font-size="11" font-weight="600">Real-world APIs (proxied)</text>
+    <text x="1042" y="474" text-anchor="middle" fill="#8892a4" font-size="9.5">User-configured base_url endpoints</text>
+    <text x="1042" y="492" text-anchor="middle" fill="#8892a4" font-size="9.5">HTTPX calls via ToolOrchestrator</text>
+    <text x="1042" y="510" text-anchor="middle" fill="#8892a4" font-size="9.5">Auth injected server-side only</text>
+
+    <!-- ══ ARROWS ══ -->
+    <!-- Frontend → Backend (API calls) -->
+    <line x1="230" y1="200" x2="258" y2="200" stroke="#6c8fff" stroke-width="1.5" marker-end="url(#arr)" opacity="0.7"/>
+    <text x="244" y="195" text-anchor="middle" fill="#6c8fff" font-size="8">HTTP/REST</text>
+
+    <!-- Backend Routers → Agent Orchestrator -->
+    <line x1="480" y1="119" x2="513" y2="99" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr3)" opacity="0.7"/>
+
+    <!-- Routers → LLM Client (chatgpt router) -->
+    <line x1="375" y1="367" x2="375" y2="365" stroke="none"/>
+
+    <!-- LLM Client → OpenAI -->
+    <line x1="870" y1="307" x2="913" y2="100" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr3)" opacity="0.6" stroke-dasharray="5 3"/>
+
+    <!-- Tool Executor → Real APIs -->
+    <line x1="870" y1="424" x2="913" y2="490" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arr4)" opacity="0.6"/>
+
+    <!-- Auth utils → Google OAuth -->
+    <line x1="870" y1="230" x2="913" y2="195" stroke="#6c8fff" stroke-width="1.2" marker-end="url(#arr)" opacity="0.6" stroke-dasharray="4 3"/>
+
+    <!-- Auth utils → GitHub OAuth -->
+    <line x1="870" y1="252" x2="913" y2="285" stroke="#6c8fff" stroke-width="1.2" marker-end="url(#arr)" opacity="0.6" stroke-dasharray="4 3"/>
+
+    <!-- Auth utils → Gmail SMTP -->
+    <line x1="870" y1="242" x2="913" y2="375" stroke="#34d399" stroke-width="1.2" marker-end="url(#arr2)" opacity="0.6" stroke-dasharray="4 3"/>
+
+    <!-- Backend → Database -->
+    <line x1="375" y1="540" x2="375" y2="628" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arr)" opacity="0.8"/>
+    <text x="355" y="588" text-anchor="middle" fill="#8892a4" font-size="8" transform="rotate(-90 355 588)">SQLAlchemy</text>
+
+    <!-- Schema agent → LLM Client -->
+    <line x1="515" y1="259" x2="480" y2="315" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.5" stroke-dasharray="3 2"/>
+    <text x="492" y="298" fill="#8892a4" font-size="7.5">LLM enrichment</text>
+
+    <!-- Agent Pipeline state flow arrows (vertical) -->
+    <line x1="590" y1="153" x2="590" y2="163" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.5"/>
+    <line x1="590" y1="193" x2="590" y2="203" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.5"/>
+    <line x1="590" y1="233" x2="590" y2="243" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.5"/>
+    <line x1="590" y1="273" x2="590" y2="283" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.5"/>
+    <!-- Schema → Reconcile -->
+    <line x1="665" y1="259" x2="688" y2="140" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.4"/>
+    <!-- Reconcile → Confidence -->
+    <line x1="765" y1="153" x2="765" y2="163" stroke="#a78bfa" stroke-width="1" marker-end="url(#arr3)" opacity="0.5"/>
+    <!-- → HITL -->
+    <line x1="765" y1="193" x2="765" y2="323" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr4)" opacity="0.5"/>
+    <!-- Post-HITL flow -->
+    <line x1="590" y1="388" x2="590" y2="398" stroke="#f472b6" stroke-width="1" marker-end="url(#arr)" opacity="0.5"/>
+    <line x1="765" y1="388" x2="765" y2="398" stroke="#f472b6" stroke-width="1" marker-end="url(#arr)" opacity="0.5"/>
+    <line x1="765" y1="428" x2="765" y2="448" stroke="#f472b6" stroke-width="1" marker-end="url(#arr)" opacity="0.5"/>
+
+    <!-- State label -->
+    <text x="680" y="600" text-anchor="middle" fill="#8892a4" font-size="9" font-style="italic">INIT→CLASSIFYING→PARSING→SCHEMA_GENERATING→RECONCILING→CONFIDENCE_SCORING→HITL_PENDING→VALIDATING→API_TESTING→SAVING→SAVED</text>
+  </svg>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#6c8fff"></div> API / Routing layer</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> AI Agent pipeline</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Utility / Extraction</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div> Post-HITL validation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div> Execution / Context</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8892a4"></div> External services</div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Frontend SPA (React 18 + Vite)</div>
+      <div class="card-body">Pages for chat/doc/manual API creation, HITL validator, registry browser, and ChatGPT hub. Global state via AuthContext, UploadContext, ThemeContext, LanguageContext. Data sync via TanStack React Query + Axios.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">FastAPI Backend (port 8000)</div>
+      <div class="card-body">5 router groups: auth, social_auth, agent, registry, chatgpt, monitor, subscription. JWT middleware, rate limiting via slowapi, async throughout with HTTPX for outbound HTTP.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Agent Pipeline (State Machine)</div>
+      <div class="card-body">11-state machine: INIT → CLASSIFYING → PARSING → SCHEMA_GENERATING → RECONCILING → CONFIDENCE_SCORING → HITL_PENDING → VALIDATING → API_TESTING → SAVING → SAVED. Orchestrator coordinates all agents, handles retries, merges human edits.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tool Execution Engine</div>
+      <div class="card-body">Server-side proxy for ChatGPT tool calls. Parallel asyncio.gather execution. Retry with exponential backoff (2 retries, 0.5s base delay). Auth (API key/Bearer/Basic/OAuth2) injected only at execution time. 15s timeout per call.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">LLM Client</div>
+      <div class="card-body">AsyncOpenAI wrapper for GPT-4o. Supports chat() and chat_json() (enforced JSON mode). MOCK_LLM flag for offline development. Token usage tracked per request.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Data Layer</div>
+      <div class="card-body">SQLAlchemy 2.0 ORM. SQLite for dev, PostgreSQL for production. Alembic migrations. JSON/JSONB columns for flexible schema storage. user_id indexes on all tenant tables for isolation.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LEVEL 2 — HIGH-LEVEL ARCHITECTURE DIAGRAM
+══════════════════════════════════════════════════════════════ -->
+<div class="diagram-section" id="tab-level2">
+  <h2>Level 2 — High-Level Architecture Diagram</h2>
+
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 820" width="100%">
+    <defs>
+      <marker id="ha1" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 9 3.5, 0 7" fill="#6c8fff" opacity="0.8"/>
+      </marker>
+      <marker id="ha2" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 9 3.5, 0 7" fill="#34d399" opacity="0.8"/>
+      </marker>
+      <marker id="ha3" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 9 3.5, 0 7" fill="#a78bfa" opacity="0.8"/>
+      </marker>
+      <marker id="ha4" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 9 3.5, 0 7" fill="#fb923c" opacity="0.8"/>
+      </marker>
+      <marker id="ha5" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 9 3.5, 0 7" fill="#f87171" opacity="0.8"/>
+      </marker>
+    </defs>
+
+    <!-- ── USER ── -->
+    <ellipse cx="580" cy="46" rx="60" ry="26" fill="#22263a" stroke="#e2e8f0" stroke-width="1.5"/>
+    <text x="580" y="51" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="600">User</text>
+
+    <!-- ── FRONTEND ── -->
+    <rect x="320" y="110" width="520" height="110" rx="14" fill="#6c8fff22" stroke="#6c8fff" stroke-width="2"/>
+    <text x="580" y="135" text-anchor="middle" fill="#6c8fff" font-size="13" font-weight="700">Frontend — React SPA (Vite · port 5173)</text>
+    <text x="400" y="162" text-anchor="middle" fill="#8892a4" font-size="10">Chat Builder</text>
+    <text x="490" y="162" text-anchor="middle" fill="#8892a4" font-size="10">Doc Upload</text>
+    <text x="580" y="162" text-anchor="middle" fill="#8892a4" font-size="10">HITL Validator</text>
+    <text x="680" y="162" text-anchor="middle" fill="#8892a4" font-size="10">Registry</text>
+    <text x="770" y="162" text-anchor="middle" fill="#8892a4" font-size="10">ChatGPT Hub</text>
+    <text x="580" y="186" text-anchor="middle" fill="#8892a4" font-size="9">Auth · Theme · Upload · Language contexts  |  Axios + React Query</text>
+    <text x="580" y="204" text-anchor="middle" fill="#8892a4" font-size="9">Tailwind CSS · React Router v6 · i18n (EN/ES/FR)</text>
+
+    <!-- User → Frontend -->
+    <line x1="580" y1="72" x2="580" y2="108" stroke="#e2e8f0" stroke-width="1.5" marker-end="url(#ha1)" opacity="0.6"/>
+    <text x="592" y="94" fill="#8892a4" font-size="9">Browser</text>
+
+    <!-- ── BACKEND GATEWAY ── -->
+    <rect x="320" y="260" width="520" height="50" rx="10" fill="#22263a" stroke="#6c8fff" stroke-width="1.5"/>
+    <text x="580" y="281" text-anchor="middle" fill="#6c8fff" font-size="12" font-weight="700">FastAPI Gateway (port 8000)</text>
+    <text x="580" y="299" text-anchor="middle" fill="#8892a4" font-size="9.5">JWT Auth Middleware · Rate Limiter (slowapi) · CORS · Async routing</text>
+
+    <!-- Frontend → Backend -->
+    <line x1="580" y1="222" x2="580" y2="258" stroke="#6c8fff" stroke-width="2" marker-end="url(#ha1)" opacity="0.8"/>
+    <text x="592" y="244" fill="#6c8fff" font-size="9">REST / JSON</text>
+
+    <!-- ── THREE CORE SUBSYSTEMS ── -->
+
+    <!-- [A] API CREATION SUBSYSTEM -->
+    <rect x="30" y="355" width="310" height="250" rx="12" fill="#a78bfa11" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="185" y="378" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">API Creation Subsystem</text>
+
+    <rect x="45" y="390" width="280" height="28" rx="6" fill="#22263a" stroke="#a78bfa" stroke-width="1"/>
+    <text x="185" y="409" text-anchor="middle" fill="#a78bfa" font-size="10">Agent Orchestrator (state machine)</text>
+
+    <rect x="45" y="428" width="130" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="110" y="443" text-anchor="middle" fill="#e2e8f0" font-size="9">InputClassifier</text>
+
+    <rect x="185" y="428" width="140" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="255" y="443" text-anchor="middle" fill="#e2e8f0" font-size="9">ParsingAgent</text>
+
+    <rect x="45" y="460" width="130" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="110" y="475" text-anchor="middle" fill="#e2e8f0" font-size="9">SchemaAgent</text>
+
+    <rect x="185" y="460" width="140" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="255" y="475" text-anchor="middle" fill="#e2e8f0" font-size="9">ReconciliationAgent</text>
+
+    <rect x="45" y="492" width="130" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="110" y="507" text-anchor="middle" fill="#e2e8f0" font-size="9">ConfidenceAgent</text>
+
+    <rect x="185" y="492" width="140" height="22" rx="5" fill="#fb923c22" stroke="#fb923c" stroke-width="1"/>
+    <text x="255" y="507" text-anchor="middle" fill="#fb923c" font-size="9">HITL Review</text>
+
+    <rect x="45" y="524" width="130" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="110" y="539" text-anchor="middle" fill="#e2e8f0" font-size="9">SchemaValidator</text>
+
+    <rect x="185" y="524" width="140" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="255" y="539" text-anchor="middle" fill="#e2e8f0" font-size="9">ApiTestAgent</text>
+
+    <rect x="45" y="556" width="280" height="22" rx="5" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="185" y="571" text-anchor="middle" fill="#34d399" font-size="9">ApiSaver → API Registry (DB)</text>
+
+    <!-- [B] CHATGPT INTEGRATION SUBSYSTEM -->
+    <rect x="390" y="355" width="360" height="250" rx="12" fill="#34d39911" stroke="#34d399" stroke-width="1.5"/>
+    <text x="570" y="378" text-anchor="middle" fill="#34d399" font-size="12" font-weight="700">ChatGPT Integration Subsystem</text>
+
+    <rect x="405" y="390" width="330" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="570" y="409" text-anchor="middle" fill="#34d399" font-size="10">Context Layer (session history · system prompt · TTL)</text>
+
+    <rect x="405" y="428" width="330" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="570" y="447" text-anchor="middle" fill="#34d399" font-size="10">GPT-4o Tool-Call Loop (via LLM Client)</text>
+
+    <rect x="405" y="466" width="330" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="570" y="485" text-anchor="middle" fill="#34d399" font-size="10">OpenAI Translator  →  Tool Schema</text>
+
+    <rect x="405" y="504" width="330" height="28" rx="6" fill="#22263a" stroke="#fb923c" stroke-width="1"/>
+    <text x="570" y="523" text-anchor="middle" fill="#fb923c" font-size="10">Tool Orchestrator  (parallel · retry · auth)</text>
+
+    <rect x="405" y="542" width="330" height="28" rx="6" fill="#22263a" stroke="#34d399" stroke-width="1"/>
+    <text x="570" y="561" text-anchor="middle" fill="#34d399" font-size="10">tool_call_logs · token_usage  →  DB</text>
+
+    <rect x="405" y="580" width="330" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="570" y="595" text-anchor="middle" fill="#8892a4" font-size="9">chatgpt_connections  ·  Connect/Disconnect APIs</text>
+
+    <!-- [C] AUTH SUBSYSTEM -->
+    <rect x="800" y="355" width="340" height="250" rx="12" fill="#f472b611" stroke="#f472b6" stroke-width="1.5"/>
+    <text x="970" y="378" text-anchor="middle" fill="#f472b6" font-size="12" font-weight="700">Auth &amp; Security Subsystem</text>
+
+    <rect x="815" y="390" width="310" height="28" rx="6" fill="#22263a" stroke="#f472b6" stroke-width="1"/>
+    <text x="970" y="409" text-anchor="middle" fill="#f472b6" font-size="10">JWT Issuance &amp; Validation (7-day TTL)</text>
+
+    <rect x="815" y="428" width="145" height="28" rx="6" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="887" y="447" text-anchor="middle" fill="#e2e8f0" font-size="9">Local Login + OTP 2FA</text>
+
+    <rect x="970" y="428" width="155" height="28" rx="6" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="1047" y="447" text-anchor="middle" fill="#e2e8f0" font-size="9">Google / GitHub OAuth2</text>
+
+    <rect x="815" y="466" width="145" height="28" rx="6" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="887" y="485" text-anchor="middle" fill="#e2e8f0" font-size="9">Passlib bcrypt hash</text>
+
+    <rect x="970" y="466" width="155" height="28" rx="6" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="1047" y="485" text-anchor="middle" fill="#e2e8f0" font-size="9">Gmail OTP Delivery</text>
+
+    <rect x="815" y="504" width="310" height="28" rx="6" fill="#22263a" stroke="#f472b6" stroke-width="1"/>
+    <text x="970" y="523" text-anchor="middle" fill="#f472b6" font-size="10">AES-256 Credential Encryption (utils/encryption.py)</text>
+
+    <rect x="815" y="542" width="310" height="28" rx="6" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="970" y="561" text-anchor="middle" fill="#8892a4" font-size="9">Role-based access (admin / user)  ·  Rate limiting</text>
+
+    <rect x="815" y="580" width="310" height="22" rx="5" fill="#22263a" stroke="#2e3350" stroke-width="1"/>
+    <text x="970" y="595" text-anchor="middle" fill="#8892a4" font-size="9">Subscription credits  ·  Account activation</text>
+
+    <!-- Backend → three subsystems -->
+    <line x1="480" y1="312" x2="235" y2="353" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#ha3)" opacity="0.7"/>
+    <text x="345" y="332" fill="#a78bfa" font-size="8.5">API Creation</text>
+
+    <line x1="580" y1="312" x2="580" y2="353" stroke="#34d399" stroke-width="1.8" marker-end="url(#ha2)" opacity="0.7"/>
+    <text x="592" y="336" fill="#34d399" font-size="8.5">ChatGPT</text>
+
+    <line x1="690" y1="312" x2="910" y2="353" stroke="#f472b6" stroke-width="1.8" marker-end="url(#ha5)" opacity="0.7"/>
+    <text x="810" y="332" fill="#f472b6" font-size="8.5">Auth</text>
+
+    <!-- ── DATA LAYER ── -->
+    <rect x="30" y="640" width="740" height="80" rx="12" fill="#22263a" stroke="#2e3350" stroke-width="1.5"/>
+    <text x="400" y="663" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Data Layer</text>
+
+    <rect x="45" y="672" width="165" height="22" rx="5" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="127" y="687" text-anchor="middle" fill="#8892a4" font-size="9">SQLite (dev) / PostgreSQL (prod)</text>
+
+    <rect x="220" y="672" width="150" height="22" rx="5" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="295" y="687" text-anchor="middle" fill="#8892a4" font-size="9">Alembic migrations</text>
+
+    <rect x="380" y="672" width="175" height="22" rx="5" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="467" y="687" text-anchor="middle" fill="#8892a4" font-size="9">JSON/JSONB flexible schema cols</text>
+
+    <rect x="565" y="672" width="195" height="22" rx="5" fill="#1a1d27" stroke="#2e3350" stroke-width="1"/>
+    <text x="662" y="687" text-anchor="middle" fill="#8892a4" font-size="9">Uploads dir  ·  (Future: Redis cache)</text>
+
+    <!-- Subsystems → DB -->
+    <line x1="185" y1="607" x2="185" y2="638" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ha3)" opacity="0.6"/>
+    <line x1="570" y1="607" x2="400" y2="638" stroke="#34d399" stroke-width="1.5" marker-end="url(#ha2)" opacity="0.6"/>
+    <line x1="970" y1="607" x2="700" y2="638" stroke="#f472b6" stroke-width="1.5" marker-end="url(#ha5)" opacity="0.6"/>
+
+    <!-- ── EXTERNAL SERVICES ── -->
+    <rect x="800" y="640" width="340" height="80" rx="12" fill="#22263a" stroke="#2e3350" stroke-width="1.5"/>
+    <text x="970" y="663" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">External Services</text>
+
+    <rect x="810" y="673" width="75" height="22" rx="5" fill="#a78bfa22" stroke="#a78bfa" stroke-width="1"/>
+    <text x="847" y="688" text-anchor="middle" fill="#a78bfa" font-size="9">OpenAI GPT-4o</text>
+
+    <rect x="895" y="673" width="70" height="22" rx="5" fill="#6c8fff22" stroke="#6c8fff" stroke-width="1"/>
+    <text x="930" y="688" text-anchor="middle" fill="#6c8fff" font-size="9">Google OAuth</text>
+
+    <rect x="975" y="673" width="70" height="22" rx="5" fill="#6c8fff22" stroke="#6c8fff" stroke-width="1"/>
+    <text x="1010" y="688" text-anchor="middle" fill="#6c8fff" font-size="9">GitHub OAuth</text>
+
+    <rect x="1055" y="673" width="75" height="22" rx="5" fill="#34d39922" stroke="#34d399" stroke-width="1"/>
+    <text x="1092" y="688" text-anchor="middle" fill="#34d399" font-size="9">Gmail SMTP</text>
+
+    <!-- Auth subsystem → External -->
+    <line x1="970" y1="607" x2="970" y2="638" stroke="#f472b6" stroke-width="1.5" marker-end="url(#ha5)" opacity="0.5"/>
+
+    <!-- ChatGPT → OpenAI (external) -->
+    <line x1="755" y1="447" x2="848" y2="688" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ha3)" opacity="0.5"/>
+
+    <!-- Tool Orchestrator → Real APIs (shown as annotation) -->
+    <text x="440" y="760" text-anchor="middle" fill="#fb923c" font-size="10.5" font-weight="600">Tool Executor → Real-world APIs (user-configured base_url, proxied HTTPX calls)</text>
+    <text x="440" y="778" text-anchor="middle" fill="#8892a4" font-size="9">Credentials injected server-side only  ·  Parallel execution  ·  Retry backoff  ·  15s timeout</text>
+
+    <!-- Flow label -->
+    <text x="580" y="810" text-anchor="middle" fill="#2e3350" font-size="9">MCP Hub — AI-powered API creation &amp; ChatGPT tool integration platform</text>
+  </svg>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> API Creation flow</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> ChatGPT integration flow</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div> Auth &amp; security flow</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div> Tool execution / HITL</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6c8fff"></div> User-facing / routing</div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Three User-Facing Flows</div>
+      <div class="card-body">
+        <b style="color:#a78bfa">1. API Creation:</b> Upload doc or chat → AI pipeline → HITL review → API saved to registry.<br/>
+        <b style="color:#34d399">2. ChatGPT Integration:</b> Connect API → GPT-4o loops tool calls → Tool executor proxies to real APIs → synthesized response.<br/>
+        <b style="color:#f472b6">3. Auth:</b> Register/OTP login or Google/GitHub OAuth2 → JWT issued → all endpoints protected.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Security Boundaries</div>
+      <div class="card-body">Credentials are AES-256 encrypted in DB and decrypted only inside ToolOrchestrator at execution time. JWT secures all API calls. OTP 2FA for local auth. CORS restricts browser origins. Rate limiting on sensitive endpoints.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Scalability Notes</div>
+      <div class="card-body">In-memory ContextLayer designed to be swapped with Redis. SQLite swappable to PostgreSQL via DATABASE_URL. Agent sessions are resumable — HITL allows long-running workflows. Parallel tool execution via asyncio.gather.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Data Flow Highlights</div>
+      <div class="card-body">Doc/text → ParsingAgent chunks → SchemaAgent OpenAPI schema → ReconciliationAgent merges → ConfidenceAgent scores → HITL UI → human edits merged → Validator + TestAgent → ApiSaver persists → registry exposed as OpenAI tools.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(id) {
+    document.querySelectorAll('.diagram-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+</body>
+</html>

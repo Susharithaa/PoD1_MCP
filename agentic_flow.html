@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP Hub — Agentic Flow Architecture</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --blue: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --orange: #f0883e;
+      --purple: #bc8cff;
+      --red: #f85149;
+      --teal: #39d353;
+      --cyan: #56d364;
+      --accent-parse: #1f6feb;
+      --accent-schema: #8957e5;
+      --accent-reconcile: #d2a8ff;
+      --accent-confidence: #e3b341;
+      --accent-validate: #3fb950;
+      --accent-test: #f0883e;
+      --accent-save: #58a6ff;
+      --accent-hitl: #db61a2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      background: linear-gradient(135deg, #0d1117 0%, #1a1f29 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 28px 40px 24px;
+    }
+    header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: -0.5px;
+    }
+    header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 14px;
+    }
+    .badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-blue { background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+    .badge-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-purple { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+
+    /* ─── LAYOUT ─── */
+    .page { max-width: 1400px; margin: 0 auto; padding: 32px 40px 60px; }
+
+    /* ─── SECTION HEADING ─── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── ENTRY POINTS ─── */
+    .entry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .entry-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      position: relative;
+    }
+    .entry-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 10px 10px 0 0;
+    }
+    .entry-upload::before { background: linear-gradient(90deg, #1f6feb, #58a6ff); }
+    .entry-chat::before { background: linear-gradient(90deg, #8957e5, #bc8cff); }
+    .entry-manual::before { background: linear-gradient(90deg, #238636, #3fb950); }
+    .entry-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .entry-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .entry-upload .entry-title { color: var(--blue); }
+    .entry-chat .entry-title { color: var(--purple); }
+    .entry-manual .entry-title { color: var(--green); }
+    .entry-desc { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .entry-route {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      color: var(--blue);
+      background: rgba(88,166,255,0.1);
+      border: 1px solid rgba(88,166,255,0.2);
+      padding: 4px 8px;
+      border-radius: 5px;
+      display: inline-block;
+    }
+    .entry-formats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .fmt-tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ─── PIPELINE FLOW ─── */
+    .pipeline-section { margin-top: 28px; }
+
+    .phase-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .phase-pill {
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pill-pre { background: rgba(31,111,235,0.2); color: #58a6ff; border: 1px solid rgba(31,111,235,0.4); }
+    .pill-hitl { background: rgba(219,97,162,0.2); color: #db61a2; border: 1px solid rgba(219,97,162,0.4); }
+    .pill-post { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid rgba(63,185,80,0.4); }
+    .phase-desc { font-size: 12px; color: var(--muted); }
+
+    /* ─── FLOW TRACK ─── */
+    .flow-track {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-bottom: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .flow-step {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .state-pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .state-pill.active { color: var(--blue); border-color: rgba(88,166,255,0.4); background: rgba(88,166,255,0.08); }
+    .state-pill.hitl { color: var(--accent-hitl); border-color: rgba(219,97,162,0.4); background: rgba(219,97,162,0.08); }
+    .state-pill.saved { color: var(--green); border-color: rgba(63,185,80,0.4); background: rgba(63,185,80,0.08); }
+    .state-pill.failed { color: var(--red); border-color: rgba(248,81,73,0.4); background: rgba(248,81,73,0.08); }
+    .arrow {
+      color: var(--border);
+      padding: 0 6px;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    /* ─── AGENTS GRID ─── */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+      cursor: default;
+    }
+    .agent-card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+    }
+    .agent-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .agent-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .agent-meta { flex: 1; }
+    .agent-number {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .agent-name { font-size: 15px; font-weight: 700; }
+    .agent-file {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .agent-body { padding: 14px 18px; }
+    .agent-purpose {
+      font-size: 13px;
+      color: #c9d1d9;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .detail-row { margin-bottom: 10px; }
+    .detail-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .detail-items { display: flex; flex-direction: column; gap: 3px; }
+    .detail-item {
+      font-size: 12px;
+      color: var(--text);
+      padding-left: 10px;
+      position: relative;
+    }
+    .detail-item::before {
+      content: '›';
+      position: absolute;
+      left: 0;
+      color: var(--muted);
+    }
+    .llm-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+    .llm-yes { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+    .llm-no  { background: rgba(139,148,158,0.1);  color: var(--muted);  border: 1px solid var(--border); }
+    .llm-cond { background: rgba(210,169,34,0.15); color: var(--yellow); border: 1px solid rgba(210,169,34,0.3); }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+
+    /* ─── HITL BLOCK ─── */
+    .hitl-block {
+      background: var(--surface);
+      border: 2px solid rgba(219,97,162,0.5);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 20px 0;
+      position: relative;
+    }
+    .hitl-block::before {
+      content: 'PAUSE — Human Review Required';
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      background: var(--surface);
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-hitl);
+    }
+    .hitl-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 8px; }
+    .hitl-col h4 { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .hitl-item { font-size: 12px; color: var(--text); margin-bottom: 4px; padding-left: 12px; position: relative; }
+    .hitl-item::before { content: '•'; position: absolute; left: 0; color: var(--accent-hitl); }
+
+    /* ─── UTILS GRID ─── */
+    .utils-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .util-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .util-name {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 6px;
+    }
+    .util-desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .util-detail { font-size: 12px; color: var(--text); }
+
+    /* ─── DATA FLOW ─── */
+    .dataflow-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-top: 16px;
+    }
+    .dataflow-modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .df-mode h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .df-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .df-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+    .df-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+    .df-code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      color: var(--blue);
+    }
+
+    /* ─── STATE MACHINE ─── */
+    .sm-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-top: 16px;
+    }
+    .sm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .sm-col h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 10px; }
+    .sm-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .sm-state {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .sm-state.s-run { color: var(--blue); border-color: rgba(88,166,255,0.4); background: rgba(88,166,255,0.08); }
+    .sm-state.s-wait { color: var(--accent-hitl); border-color: rgba(219,97,162,0.4); background: rgba(219,97,162,0.08); }
+    .sm-state.s-ok { color: var(--green); border-color: rgba(63,185,80,0.4); background: rgba(63,185,80,0.08); }
+    .sm-state.s-err { color: var(--red); border-color: rgba(248,81,73,0.4); background: rgba(248,81,73,0.08); }
+    .sm-arr { color: var(--muted); font-size: 14px; }
+    .sm-note { font-size: 11px; color: var(--muted); }
+
+    /* ─── SECTION SPACING ─── */
+    .mt32 { margin-top: 32px; }
+    .mt24 { margin-top: 24px; }
+
+    /* ─── LEGEND ─── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    /* ─── AGENT COLOR THEMING ─── */
+    .card-classify .agent-icon { background: rgba(88,166,255,0.15); }
+    .card-classify .agent-name { color: var(--blue); }
+    .card-parse .agent-icon { background: rgba(31,111,235,0.2); }
+    .card-parse .agent-name { color: #79c0ff; }
+    .card-schema .agent-icon { background: rgba(137,87,229,0.2); }
+    .card-schema .agent-name { color: var(--purple); }
+    .card-reconcile .agent-icon { background: rgba(210,168,255,0.15); }
+    .card-reconcile .agent-name { color: #d2a8ff; }
+    .card-confidence .agent-icon { background: rgba(227,179,65,0.15); }
+    .card-confidence .agent-name { color: var(--yellow); }
+    .card-validator .agent-icon { background: rgba(63,185,80,0.15); }
+    .card-validator .agent-name { color: var(--green); }
+    .card-apitest .agent-icon { background: rgba(240,136,62,0.15); }
+    .card-apitest .agent-name { color: var(--orange); }
+    .card-saver .agent-icon { background: rgba(88,166,255,0.15); }
+    .card-saver .agent-name { color: var(--blue); }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 900px) {
+      .entry-grid, .hitl-grid, .dataflow-modes, .sm-grid { grid-template-columns: 1fr; }
+      header, .page { padding-left: 16px; padding-right: 16px; }
+    }
+
+    /* ─── TOOLTIP ─── */
+    [data-tip] { position: relative; }
+    [data-tip]:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2d333b;
+      color: var(--text);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* sub-section connector lines */
+    .connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 4px 0;
+      color: var(--border);
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header>
+  <h1>MCP Hub — Agentic Flow Architecture</h1>
+  <p>End-to-end pipeline for parsing, enriching, and saving API definitions via a state-machine orchestrator</p>
+  <div class="badges">
+    <span class="badge badge-blue">8 Agents</span>
+    <span class="badge badge-purple">5 LLM Calls</span>
+    <span class="badge badge-green">State Machine Orchestrator</span>
+    <span class="badge badge-blue">Human-in-the-Loop (HITL)</span>
+    <span class="badge badge-purple">Deterministic Anchoring</span>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- ══════════════ 1. ENTRY POINTS ══════════════ -->
+  <div class="section-title">1. Entry Points — How a Session Starts</div>
+
+  <div class="entry-grid">
+    <div class="entry-card entry-upload">
+      <div class="entry-label">Entry Mode A</div>
+      <div class="entry-title">📄 File Upload</div>
+      <div class="entry-desc">User uploads a document (PDF, DOCX, OpenAPI spec, Postman collection). File is saved to disk and path stored in session.</div>
+      <code class="entry-route">POST /api/agent/upload</code>
+      <div class="entry-formats">
+        <span class="fmt-tag">PDF</span>
+        <span class="fmt-tag">DOCX</span>
+        <span class="fmt-tag">OpenAPI JSON</span>
+        <span class="fmt-tag">OpenAPI YAML</span>
+        <span class="fmt-tag">Postman JSON</span>
+        <span class="fmt-tag">TXT / MD</span>
+        <span class="fmt-tag">HTML</span>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:var(--muted);">Rate limit: <strong style="color:var(--text)">10/min</strong> per user</div>
+    </div>
+
+    <div class="entry-card entry-chat">
+      <div class="entry-label">Entry Mode B</div>
+      <div class="entry-title">💬 Chat Message</div>
+      <div class="entry-desc">User pastes raw API documentation as natural language or structured text. Stored as <code style="color:var(--purple)">raw_input</code> in session.</div>
+      <code class="entry-route">POST /api/agent/chat</code>
+      <div class="entry-formats">
+        <span class="fmt-tag">Natural Language</span>
+        <span class="fmt-tag">Raw Markdown</span>
+        <span class="fmt-tag">Inline JSON</span>
+        <span class="fmt-tag">Curl examples</span>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:var(--muted);">Rate limit: <strong style="color:var(--text)">60/min</strong> per user</div>
+    </div>
+
+    <div class="entry-card entry-manual">
+      <div class="entry-label">Entry Mode C</div>
+      <div class="entry-title">📝 Manual Form</div>
+      <div class="entry-desc">User fills a structured form with API name, base URL, endpoints and parameters. <strong>Skips LLM pipeline entirely</strong> — goes straight to validate → test → save.</div>
+      <code class="entry-route">POST /api/agent/manual</code>
+      <div class="entry-formats">
+        <span class="fmt-tag">name</span>
+        <span class="fmt-tag">base_url</span>
+        <span class="fmt-tag">auth_type</span>
+        <span class="fmt-tag">endpoints[]</span>
+        <span class="fmt-tag">parameters[]</span>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:var(--muted);">Rate limit: <strong style="color:var(--text)">30/min</strong> per user</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 2. STATE MACHINE FLOW ══════════════ -->
+  <div class="section-title mt32">2. Full State Machine — Session Lifecycle</div>
+
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 20px;">
+    <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">Each session progresses through these states. Errors at any step jump to FAILED. User can restart or discard at any point.</div>
+
+    <div class="flow-track">
+      <div class="flow-step"><div class="state-pill">INIT</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">CLASSIFYING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">PARSING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">SCHEMA_GENERATING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">RECONCILING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">CONFIDENCE_SCORING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill hitl">HITL_PENDING ⏸</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">VALIDATING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">API_TESTING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill active">SAVING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill saved">SAVED ✓</div></div>
+    </div>
+
+    <div class="flow-track" style="margin-top:8px;">
+      <div class="flow-step"><div class="state-pill">Any state</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill failed">FAILED ✗</div></div>
+      <span style="font-size:12px; color:var(--muted); margin-left:16px;">On any unhandled exception (friendly error saved to log, no 500 response)</span>
+    </div>
+
+    <div class="flow-track" style="margin-top:8px;">
+      <div class="flow-step"><div class="state-pill hitl">HITL_PENDING</div></div>
+      <div class="flow-step"><span class="arrow">→</span></div>
+      <div class="flow-step"><div class="state-pill failed">DISCARDED</div></div>
+      <span style="font-size:12px; color:var(--muted); margin-left:16px;">User explicitly rejects the session</span>
+    </div>
+  </div>
+
+  <!-- ══════════════ 3. PRE-HITL PIPELINE ══════════════ -->
+  <div class="pipeline-section mt32">
+    <div class="phase-label">
+      <span class="phase-pill pill-pre">Phase 1 — Pre-HITL Pipeline</span>
+      <span class="phase-desc">Fully automated. Runs on session start. Returns to user at HITL_PENDING.</span>
+    </div>
+
+    <div class="agents-grid">
+
+      <!-- AGENT 1: InputClassifier -->
+      <div class="agent-card card-classify">
+        <div class="agent-header">
+          <div class="agent-icon">🔍</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 1 · State: CLASSIFYING</div>
+            <div class="agent-name">InputClassifier</div>
+            <div class="agent-file">agents/input_classifier.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Gateway agent. Determines whether the session should be processed as a <strong>document upload (DOC)</strong> or a <strong>chat message (CHAT)</strong>, so downstream agents know which parsing path to take.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.file_path</code> — path to uploaded file (if any)</div>
+              <div class="detail-item"><code style="color:var(--blue)">session.raw_input</code> — chat text (if any)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Logic</div>
+            <div class="detail-items">
+              <div class="detail-item">If <code style="color:var(--blue)">file_path</code> exists on disk → mode = <strong>"DOC"</strong></div>
+              <div class="detail-item">Otherwise → mode = <strong>"CHAT"</strong></div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.mode</code> = <code>"DOC"</code> | <code>"CHAT"</code></div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-no">No LLM</span>
+        </div>
+      </div>
+
+      <!-- AGENT 2: ParsingAgent -->
+      <div class="agent-card card-parse">
+        <div class="agent-header">
+          <div class="agent-icon">📖</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 2 · State: PARSING</div>
+            <div class="agent-name">ParsingAgent</div>
+            <div class="agent-file">agents/parsing_agent.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Extracts raw content from the source document and splits it into <strong>per-endpoint chunks</strong>. Structured formats (OpenAPI, Postman) are chunked deterministically; unstructured formats (PDF, DOCX) use a 2-pass LLM extraction.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.file_path</code> or <code>session.raw_input</code></div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Process (Structured)</div>
+            <div class="detail-items">
+              <div class="detail-item">doc_extractor reads JSON/YAML → detects OpenAPI or Postman</div>
+              <div class="detail-item">smart_chunker splits at operation object level — no LLM</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Process (Unstructured)</div>
+            <div class="detail-items">
+              <div class="detail-item"><strong>Pass 1:</strong> LLM extracts endpoint index (method + path list)</div>
+              <div class="detail-item"><strong>Pass 2:</strong> LLM extracts full details per endpoint (parallel)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.extracted_schema._chunks[]</code> — one entry per endpoint</div>
+              <div class="detail-item"><code style="color:var(--green)">session.extracted_schema.base_url</code>, <code>.auth_type</code>, <code>.name</code></div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-cond">LLM (unstructured only)</span>
+        </div>
+      </div>
+
+      <!-- AGENT 3: SchemaAgent -->
+      <div class="agent-card card-schema">
+        <div class="agent-header">
+          <div class="agent-icon">🧬</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 3 · State: SCHEMA_GENERATING</div>
+            <div class="agent-name">SchemaAgent</div>
+            <div class="agent-file">agents/schema_agent.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">The core enrichment agent. Converts raw endpoint chunks into clean, <strong>OpenAPI-compatible definitions</strong>. Uses a deterministic extractor as an <em>anchor</em> to prevent LLM hallucinations, then lets the LLM fill in names, descriptions, and inferred schemas.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.extracted_schema._chunks[]</code></div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Process (per endpoint, ≤8 concurrent)</div>
+            <div class="detail-items">
+              <div class="detail-item"><code>deterministic_extractor</code> → GroundTruth (method, path, params) — <strong>LLM cannot override</strong></div>
+              <div class="detail-item">LLM enrichment: function name, description, request/response JSON Schema</div>
+              <div class="detail-item"><code>endpoint_validator</code> auto-fixes hallucinations, adds missing params</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Also Produces</div>
+            <div class="detail-items">
+              <div class="detail-item">Coverage report: matched vs total_reference endpoints</div>
+              <div class="detail-item">Validation reports: per-endpoint fix history</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.draft_api</code> — full API definition with endpoints[]</div>
+              <div class="detail-item"><code style="color:var(--green)">session.validation_reports[]</code>, <code>session.coverage_report</code></div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-yes">LLM — meta + per-endpoint enrichment</span>
+        </div>
+      </div>
+
+      <!-- AGENT 4: ReconciliationAgent -->
+      <div class="agent-card card-reconcile">
+        <div class="agent-header">
+          <div class="agent-icon">🔗</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 4 · State: RECONCILING</div>
+            <div class="agent-name">ReconciliationAgent</div>
+            <div class="agent-file">agents/reconciliation_agent.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Consistency pass over all generated endpoints. Fixes duplicates, aligns auth types, and normalises naming conventions across the entire API — ensuring a coherent, non-contradictory output.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.draft_api.endpoints[]</code></div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Pass 1 — Deterministic</div>
+            <div class="detail-items">
+              <div class="detail-item"><strong>Deduplicate:</strong> remove exact method+path duplicates</div>
+              <div class="detail-item"><strong>Align auth:</strong> inherit API-level auth for blank/UNKNOWN endpoints</div>
+              <div class="detail-item"><strong>Normalise names:</strong> majority convention (camelCase vs snake_case) wins</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Pass 2 — LLM (≤20 endpoints only)</div>
+            <div class="detail-items">
+              <div class="detail-item">Cross-endpoint consistency: naming, auth alignment, contradictory descriptions</div>
+              <div class="detail-item">Preserves method and path (anchors remain untouched)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.draft_api.endpoints[]</code> — deduplicated and normalised</div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-cond">LLM (conditional — ≤20 endpoints)</span>
+        </div>
+      </div>
+
+      <!-- AGENT 5: ConfidenceAgent -->
+      <div class="agent-card card-confidence">
+        <div class="agent-header">
+          <div class="agent-icon">📊</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 5 · State: CONFIDENCE_SCORING</div>
+            <div class="agent-name">ConfidenceAgent</div>
+            <div class="agent-file">agents/confidence_agent.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Scores every field in the draft API for <strong>HITL highlighting</strong>. The UI uses these scores to show the user which fields need manual attention. HIGH = trust it, MEDIUM = review it, LOW/MISSING = fix it.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.draft_api</code></div>
+              <div class="detail-item"><code style="color:var(--blue)">session.validation_reports[]</code> (auto-fix history from SchemaAgent)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Scoring</div>
+            <div class="detail-items">
+              <div class="detail-item"><strong>Meta fields</strong> (name, description, base_url, auth_type): LLM scores 0-100</div>
+              <div class="detail-item"><strong>Endpoint fields</strong> (path, method, input_schema, output_schema): rule-based</div>
+              <div class="detail-item">Auto-fixed fields: score reduced (fixes are a signal of lower reliability)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Score Levels</div>
+            <div class="tag-list">
+              <span class="tag" style="color:var(--green); border-color:rgba(63,185,80,0.4); background:rgba(63,185,80,0.08)">HIGH ≥80</span>
+              <span class="tag" style="color:var(--yellow); border-color:rgba(210,169,34,0.4); background:rgba(210,169,34,0.08)">MEDIUM 50–79</span>
+              <span class="tag" style="color:var(--orange); border-color:rgba(240,136,62,0.4); background:rgba(240,136,62,0.08)">LOW &lt;50</span>
+              <span class="tag" style="color:var(--red); border-color:rgba(248,81,73,0.4); background:rgba(248,81,73,0.08)">MISSING 0</span>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.confidence_map</code> — keyed by field path, e.g. <code>"endpoints.0.input_schema"</code></div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-yes">LLM — meta field scoring</span>
+        </div>
+      </div>
+
+    </div><!-- /agents-grid pre-hitl -->
+  </div>
+
+  <!-- ══════════════ HITL BLOCK ══════════════ -->
+  <div class="hitl-block mt24">
+    <div class="hitl-grid">
+      <div class="hitl-col">
+        <h4>👤 State: HITL_PENDING</h4>
+        <div class="hitl-item">Pipeline pauses, session returned to user</div>
+        <div class="hitl-item">Frontend shows draft API + confidence scores</div>
+        <div class="hitl-item">Low-confidence fields highlighted for review</div>
+        <div class="hitl-item">User edits any field inline</div>
+        <div class="hitl-item">User can provide auth credentials (Bearer token, API key)</div>
+      </div>
+      <div class="hitl-col">
+        <h4>📡 Resume Route</h4>
+        <div style="margin-bottom:8px;"><code style="color:var(--accent-hitl); font-size:11px; background:rgba(219,97,162,0.1); padding:4px 8px; border-radius:5px; display:inline-block;">POST /api/agent/{id}/hitl</code></div>
+        <div class="hitl-item"><code>edits: {}</code> — partial or full overrides to draft_api</div>
+        <div class="hitl-item"><code>auth_credentials</code> — for live testing</div>
+        <div class="hitl-item"><code>save_anyway: bool</code> — override test warnings</div>
+        <div style="margin-top:8px;"><code style="color:var(--blue); font-size:11px; background:rgba(88,166,255,0.1); padding:4px 8px; border-radius:5px; display:inline-block;">POST /api/agent/{id}/confirm</code> (no edits shortcut)</div>
+      </div>
+      <div class="hitl-col">
+        <h4>🔀 Other Actions</h4>
+        <div class="hitl-item"><code style="color:var(--red)">POST /api/agent/{id}/discard</code> — mark DISCARDED</div>
+        <div class="hitl-item"><code style="color:var(--yellow)">POST /api/agent/{id}/restart</code> — discard + re-run full pipeline with same source</div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted);">Edits are shallow-merged: top-level fields replaced, endpoints array supports index-based partial updates</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 4. POST-HITL PIPELINE ══════════════ -->
+  <div class="pipeline-section mt24">
+    <div class="phase-label">
+      <span class="phase-pill pill-post">Phase 2 — Post-HITL Pipeline</span>
+      <span class="phase-desc">Runs after user confirms. Validates → tests → saves. Can return to HITL_PENDING if issues found.</span>
+    </div>
+
+    <div class="agents-grid">
+
+      <!-- AGENT 6: SchemaValidator -->
+      <div class="agent-card card-validator">
+        <div class="agent-header">
+          <div class="agent-icon">✅</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 6 · State: VALIDATING</div>
+            <div class="agent-name">SchemaValidator</div>
+            <div class="agent-file">agents/schema_validator.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Rule-based guard. Checks that the final API definition meets hard structural requirements before allowing it to proceed to testing or saving. No LLM involved — purely deterministic.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.final_api</code> (draft merged with user edits)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Rules Checked</div>
+            <div class="detail-items">
+              <div class="detail-item">API <code>name</code> — required, non-empty</div>
+              <div class="detail-item">API <code>base_url</code> — required, valid http/https URL</div>
+              <div class="detail-item">At least one endpoint required</div>
+              <div class="detail-item">Each endpoint: <code>path</code> starts with "/", <code>method</code> is GET/POST/PUT/DELETE/PATCH</div>
+              <div class="detail-item">Each endpoint: <code>name</code> required, <code>auth_type</code> valid enum</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">On Failure</div>
+            <div class="detail-items">
+              <div class="detail-item">Session returns to <strong>HITL_PENDING</strong> with validation_errors shown</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.validation_errors[]</code> — empty = valid</div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-no">No LLM</span>
+        </div>
+      </div>
+
+      <!-- AGENT 7: ApiTestAgent -->
+      <div class="agent-card card-apitest">
+        <div class="agent-header">
+          <div class="agent-icon">🧪</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 7 · State: API_TESTING</div>
+            <div class="agent-name">ApiTestAgent</div>
+            <div class="agent-file">agents/api_test_agent.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Live-tests the API endpoints before saving. Makes <strong>real HTTP calls</strong> to GET endpoints (with test params) and uses LLM to assess whether the response matches the declared schema. POST/PUT/PATCH/DELETE are always skipped to avoid side effects.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.final_api</code></div>
+              <div class="detail-item"><code style="color:var(--blue)">session.auth_credentials</code> (decrypted, per-endpoint or shared)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Strategy</div>
+            <div class="detail-items">
+              <div class="detail-item">GET, no auth → real HTTP call with synthetic params</div>
+              <div class="detail-item">GET, with auth → call if credentials available, else SKIPPED</div>
+              <div class="detail-item">POST / PUT / PATCH → always SKIPPED (avoid side effects)</div>
+              <div class="detail-item">DELETE → always SKIPPED (destructive)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Verdicts</div>
+            <div class="tag-list">
+              <span class="tag" style="color:var(--green); border-color:rgba(63,185,80,0.4); background:rgba(63,185,80,0.08)">PASS</span>
+              <span class="tag" style="color:var(--yellow); border-color:rgba(210,169,34,0.4); background:rgba(210,169,34,0.08)">WARNING</span>
+              <span class="tag" style="color:var(--orange); border-color:rgba(240,136,62,0.4); background:rgba(240,136,62,0.08)">UNREACHABLE</span>
+              <span class="tag" style="color:var(--red); border-color:rgba(248,81,73,0.4); background:rgba(248,81,73,0.08)">AUTH_REQUIRED</span>
+              <span class="tag" style="color:var(--muted); border-color:var(--border)">SKIPPED</span>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">On WARNING/UNREACHABLE</div>
+            <div class="detail-items">
+              <div class="detail-item">If <code>save_anyway=false</code>: returns to HITL_PENDING with test results</div>
+              <div class="detail-item">If <code>save_anyway=true</code>: continues to SAVING regardless</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.api_test_results[]</code> — verdict, status_code, url_tested, duration_ms, issues[]</div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-yes">LLM — response assessment</span>
+        </div>
+      </div>
+
+      <!-- AGENT 8: ApiSaver -->
+      <div class="agent-card card-saver">
+        <div class="agent-header">
+          <div class="agent-icon">💾</div>
+          <div class="agent-meta">
+            <div class="agent-number">Agent 8 · State: SAVING</div>
+            <div class="agent-name">ApiSaver</div>
+            <div class="agent-file">agents/api_saver.py</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-purpose">Persists the validated, tested, human-approved API definition to the database. Creates <code>ApiDefinition</code> and <code>ApiEndpoint</code> records, encrypts auth credentials, and sets session state to SAVED.</div>
+
+          <div class="detail-row">
+            <div class="detail-label">Input</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--blue)">session.final_api</code></div>
+              <div class="detail-item"><code style="color:var(--blue)">session.auth_credentials</code> (per-endpoint or shared)</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Process</div>
+            <div class="detail-items">
+              <div class="detail-item">Create <code>ApiDefinition</code> record (id, name, description, base_url, visibility="PRIVATE")</div>
+              <div class="detail-item">For each endpoint: create <code>ApiEndpoint</code> record (input_schema, output_schema, headers)</div>
+              <div class="detail-item">Encrypt auth_credentials before storing (per-endpoint or shared mode)</div>
+              <div class="detail-item">Commit database transaction</div>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">Output</div>
+            <div class="detail-items">
+              <div class="detail-item"><code style="color:var(--green)">session.api_definition_id</code> — UUID of saved API</div>
+              <div class="detail-item"><strong>Database:</strong> ApiDefinition + ApiEndpoint rows created</div>
+              <div class="detail-item"><code>session.state</code> → <strong>SAVED</strong></div>
+            </div>
+          </div>
+
+          <span class="llm-badge llm-no">No LLM</span>
+        </div>
+      </div>
+
+    </div><!-- /agents-grid post-hitl -->
+  </div>
+
+  <!-- ══════════════ 5. ORCHESTRATOR ══════════════ -->
+  <div class="section-title mt32">5. Orchestrator — State Machine Controller</div>
+
+  <div class="sm-block">
+    <div style="font-size:13px; color:var(--muted); margin-bottom:16px;">
+      <code style="color:var(--blue)">agents/orchestrator.py</code> — owns all session lifecycle. Agents never talk to each other directly; everything flows through the orchestrator via a shared <code>AgentSession</code> object.
+    </div>
+
+    <div class="sm-grid">
+      <div class="sm-col">
+        <h4>Key Methods</h4>
+
+        <div class="sm-row">
+          <div class="sm-state s-run">start(raw_input, file_path)</div>
+          <span class="sm-arr">→</span>
+          <span class="sm-note">Creates session, runs full pre-HITL pipeline, returns at HITL_PENDING</span>
+        </div>
+        <div class="sm-row">
+          <div class="sm-state s-wait">confirm(session, human_edits, save_anyway)</div>
+          <span class="sm-arr">→</span>
+          <span class="sm-note">Merges edits, runs post-HITL pipeline</span>
+        </div>
+        <div class="sm-row">
+          <div class="sm-state s-err">discard(session)</div>
+          <span class="sm-arr">→</span>
+          <span class="sm-note">state = DISCARDED, no further work</span>
+        </div>
+        <div class="sm-row">
+          <div class="sm-state s-run">restart(session)</div>
+          <span class="sm-arr">→</span>
+          <span class="sm-note">Discard old, create new session, re-run pre-HITL</span>
+        </div>
+        <div class="sm-row">
+          <div class="sm-state">_merge_edits(draft, edits)</div>
+          <span class="sm-arr">→</span>
+          <span class="sm-note">Shallow merge; endpoints support index-based partial updates</span>
+        </div>
+        <div class="sm-row">
+          <div class="sm-state">_run_step(session, fn, state)</div>
+          <span class="sm-arr">→</span>
+          <span class="sm-note">Wraps each agent; catches exceptions → FAILED + friendly error</span>
+        </div>
+      </div>
+
+      <div class="sm-col">
+        <h4>Error Handling</h4>
+        <div style="background:rgba(248,81,73,0.06); border:1px solid rgba(248,81,73,0.2); border-radius:8px; padding:12px; margin-bottom:12px;">
+          <div style="font-size:12px; color:var(--text);">Any exception inside an agent is caught by <code>_run_step()</code>. The exception is converted to a friendly message via <code>_friendly_error()</code>, recorded in <code>session.error_log</code>, and the session state becomes FAILED. <strong>No 500 response is raised</strong> — the error is surfaced to the user through the session object.</div>
+        </div>
+
+        <h4>Multi-Tenancy</h4>
+        <div style="background:rgba(88,166,255,0.06); border:1px solid rgba(88,166,255,0.2); border-radius:8px; padding:12px;">
+          <div style="font-size:12px; color:var(--text);">
+            Sessions are scoped to <code>user_id</code>. All router endpoints verify that <code>session.user_id == current_user.id</code> — a 404 is returned if a user tries to access another user's session. Auth credentials are encrypted at rest and decrypted only inside <code>ApiTestAgent</code> and <code>ApiSaver</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 6. UTILITY MODULES ══════════════ -->
+  <div class="section-title mt32">6. Utility Modules — Supporting Infrastructure</div>
+
+  <div class="utils-grid">
+    <div class="util-card">
+      <div class="util-name">doc_extractor.py</div>
+      <div class="util-desc">Reads any file format and returns plain text or structured data. Used by ParsingAgent.</div>
+      <div class="util-detail">
+        <strong>Formats:</strong> PDF (pypdf), DOCX (python-docx), JSON, YAML, TXT, MD, HTML<br/>
+        <strong>Returns:</strong> <code>(text: str, fmt: "openapi_json"|"postman"|"text")</code><br/>
+        <strong>Extras:</strong> JSON repair (closes unclosed brackets/braces)
+      </div>
+    </div>
+
+    <div class="util-card">
+      <div class="util-name">smart_chunker.py</div>
+      <div class="util-desc">Splits API documentation into per-endpoint chunks using format-aware strategies. Used by ParsingAgent.</div>
+      <div class="util-detail">
+        <strong>Structured:</strong> object-level split — no LLM needed<br/>
+        <strong>Unstructured:</strong> 2-pass LLM — index extraction then details<br/>
+        <strong>Returns:</strong> <code>(base_info{}, [EndpointChunk{method, path, hint, content}])</code>
+      </div>
+    </div>
+
+    <div class="util-card">
+      <div class="util-name">deterministic_extractor.py</div>
+      <div class="util-desc">Extracts method, path, and parameters WITHOUT an LLM. Produces the "anchor" data that prevents hallucinations in SchemaAgent.</div>
+      <div class="util-detail">
+        <strong>JSON chunks:</strong> parses OpenAPI operation objects<br/>
+        <strong>Text chunks:</strong> regex for path params <code>{tokens}</code>, query patterns, auth headers<br/>
+        <strong>Returns:</strong> <code>GroundTruth(method, path, path_params, query_params, headers, body_schema)</code>
+      </div>
+    </div>
+
+    <div class="util-card">
+      <div class="util-name">endpoint_validator.py</div>
+      <div class="util-desc">Validates LLM-generated endpoints against GroundTruth and auto-fixes discrepancies. Used by SchemaAgent.</div>
+      <div class="util-detail">
+        <strong>Fixes:</strong> corrects method/path, adds missing path params (required=true), coerces invalid JSON Schema types, falls back to ground-truth body schema<br/>
+        <strong>Returns:</strong> <code>(fixed_endpoint, ValidationReport{is_valid, was_auto_fixed, issues[]})</code>
+      </div>
+    </div>
+
+    <div class="util-card">
+      <div class="util-name">endpoint_coverage.py</div>
+      <div class="util-desc">Compares reference endpoints from source file against generated endpoints to measure completeness.</div>
+      <div class="util-detail">
+        <strong>Matching:</strong> exact (method + path) + relaxed (same method, different param names)<br/>
+        <strong>Coverage %</strong> = matched / total_reference<br/>
+        <strong>Returns:</strong> <code>CoverageReport{matched, missing, extra, coverage_pct}</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 7. DATA FLOW BY MODE ══════════════ -->
+  <div class="section-title mt32">7. End-to-End Data Flow by Entry Mode</div>
+
+  <div class="dataflow-block">
+    <div class="dataflow-modes">
+
+      <div class="df-mode">
+        <h4 style="color:var(--blue)">📄 Upload Mode</h4>
+
+        <div class="df-step">
+          <div class="df-num">1</div>
+          <div class="df-text"><span class="df-code">POST /api/agent/upload</span> → file saved to disk</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">2</div>
+          <div class="df-text">InputClassifier: <code>mode = "DOC"</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">3</div>
+          <div class="df-text">doc_extractor reads file, detects format (PDF/DOCX/JSON/YAML)</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">4</div>
+          <div class="df-text">smart_chunker: structured → object split | unstructured → 2-pass LLM → <code>_chunks[]</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">5</div>
+          <div class="df-text">SchemaAgent enriches each chunk → <code>draft_api</code> with coverage report</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">6</div>
+          <div class="df-text">ReconciliationAgent deduplicates and normalises</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">7</div>
+          <div class="df-text">ConfidenceAgent scores all fields → <code>confidence_map</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">8</div>
+          <div class="df-text">⏸ Return session at <strong>HITL_PENDING</strong></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">9</div>
+          <div class="df-text">User reviews, edits, submits via <span class="df-code">POST /hitl</span></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">10</div>
+          <div class="df-text">SchemaValidator → ApiTestAgent → ApiSaver → <strong>SAVED</strong></div>
+        </div>
+      </div>
+
+      <div class="df-mode">
+        <h4 style="color:var(--purple)">💬 Chat Mode</h4>
+
+        <div class="df-step">
+          <div class="df-num">1</div>
+          <div class="df-text"><span class="df-code">POST /api/agent/chat</span> → text stored as <code>raw_input</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">2</div>
+          <div class="df-text">InputClassifier: <code>mode = "CHAT"</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">3</div>
+          <div class="df-text">ParsingAgent: raw_input treated as unstructured text</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">4</div>
+          <div class="df-text">smart_chunker 2-pass LLM extraction: index → details → <code>_chunks[]</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">5</div>
+          <div class="df-text">SchemaAgent: deterministic anchor + LLM enrichment → <code>draft_api</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">6</div>
+          <div class="df-text">ReconciliationAgent deduplicates and normalises</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">7</div>
+          <div class="df-text">ConfidenceAgent scores → <code>confidence_map</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">8</div>
+          <div class="df-text">⏸ Return session at <strong>HITL_PENDING</strong></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">9</div>
+          <div class="df-text">User reviews, edits, submits via <span class="df-code">POST /hitl</span></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">10</div>
+          <div class="df-text">SchemaValidator → ApiTestAgent → ApiSaver → <strong>SAVED</strong></div>
+        </div>
+      </div>
+
+      <div class="df-mode">
+        <h4 style="color:var(--green)">📝 Manual Mode</h4>
+
+        <div class="df-step">
+          <div class="df-num">1</div>
+          <div class="df-text"><span class="df-code">POST /api/agent/manual</span> → form data validated</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">2</div>
+          <div class="df-text"><strong>Skip entire pre-HITL pipeline</strong> (no LLM, no parsing)</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">3</div>
+          <div class="df-text">Build <code>draft_api</code> directly from form fields</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">4</div>
+          <div class="df-text">Session created at HITL_PENDING (pre-filled)</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">5</div>
+          <div class="df-text">Immediately runs post-HITL with <code>save_anyway=true</code></div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">6</div>
+          <div class="df-text">SchemaValidator — validates structure</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">7</div>
+          <div class="df-text">ApiTestAgent — live tests GET endpoints</div>
+        </div>
+        <div class="df-step">
+          <div class="df-num">8</div>
+          <div class="df-text">ApiSaver → database persist → <strong>SAVED</strong></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ 8. ANTI-HALLUCINATION ══════════════ -->
+  <div class="section-title mt32">8. Anti-Hallucination Strategy</div>
+
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+      <div>
+        <h4 style="font-size:13px; font-weight:700; color:var(--orange); margin-bottom:10px;">⚓ Deterministic Anchoring</h4>
+        <p style="font-size:12px; color:var(--muted); line-height:1.6;">Before any LLM call in <code>SchemaAgent</code>, <code>deterministic_extractor</code> extracts <strong>method, path, path params, query params, and headers</strong> using pure regex/JSON parsing. These become the "GroundTruth" anchors. The LLM is given these anchors and told it cannot change them. After the LLM responds, <code>endpoint_validator</code> enforces this — correcting any deviation.</p>
+      </div>
+      <div>
+        <h4 style="font-size:13px; font-weight:700; color:var(--purple); margin-bottom:10px;">🤖 LLM Roles</h4>
+        <p style="font-size:12px; color:var(--muted); line-height:1.6;">The LLM is only trusted to fill in things it cannot make factually wrong: function <strong>names</strong> (from operationId hints), natural-language <strong>descriptions</strong>, and <strong>inferred schemas</strong> for request/response bodies. Structural data (paths, HTTP methods, parameter names) is always derived deterministically.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <div style="margin-top:40px; padding-top:20px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); text-align:center;">
+    MCP Hub — Agentic Flow Architecture&nbsp;·&nbsp;
+  </div>
+
+</div><!-- /page -->
+
+</body>
+</html>

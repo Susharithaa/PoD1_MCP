@@ -1,0 +1,17 @@
+flowchart TD
+    START([state = PARSING]) --> IN
+
+    IN{input type?}
+
+    IN -->|CHAT message| NLP["Extract from natural language\nLook for endpoint hints GET /users\nAction verbs: fetch create delete\nResource nouns: user order product"]
+
+    IN -->|YAML or JSON| PARSE_STRUCT["yaml.safe_load or json.loads\nExtract paths map\nExtract methods\nExtract parameters\nExtract schemas"]
+
+    IN -->|PDF or TXT or MD| TEXT["Read raw text\nSplit into sections\nFind API-like patterns\nURL paths and HTTP verbs"]
+
+    NLP --> OUT["extracted_schema list\neach item has path, method, params, description"]
+    PARSE_STRUCT --> OUT
+    TEXT --> OUT
+
+    OUT --> SAVE["DB: UPDATE session\nextracted_schema = result"]
+    SAVE --> NEXT([SCHEMA_GENERATING])

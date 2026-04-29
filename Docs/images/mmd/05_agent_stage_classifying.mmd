@@ -1,0 +1,16 @@
+flowchart TD
+    START([Session created\nstate = CLASSIFYING]) --> IC1
+
+    IC1{mode set by caller?}
+    IC1 -->|MANUAL| M["mode = MANUAL\nSkip to SCHEMA_GENERATING\nNo LLM parsing needed"]
+    IC1 -->|CHAT| CH["mode = CHAT\nraw_input = user message"]
+    IC1 -->|DOC| DOC["mode = DOC\nRead file at file_path"]
+
+    DOC --> EXT{file extension?}
+    EXT -->|.yaml .yml .json| STRUCT["structured = true\nDirect parse — no text extraction"]
+    EXT -->|.txt .md .pdf| UNSTRUCT["structured = false\nExtract text from file"]
+
+    M --> NEXT1([SCHEMA_GENERATING])
+    CH --> NEXT2([PARSING])
+    STRUCT --> NEXT2
+    UNSTRUCT --> NEXT2

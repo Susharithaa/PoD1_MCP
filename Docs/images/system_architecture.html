@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1680">
+<title>MCP Hub — System Architecture v2</title>
+<style>
+:root {
+  --bg:     #f6f8fa;
+  --text:   #0f172a;
+  --muted:  #475569;
+  --dim:    #94a3b8;
+  --white:  #ffffff;
+
+  --fe-bg:  #eff6ff; --fe-bd:  #3b82f6; --fe-hi:  #1e40af; --fe-lo:  #dbeafe;
+  --be-bg:  #f0fdf4; --be-bd:  #16a34a; --be-hi:  #14532d; --be-lo:  #dcfce7;
+  --ag-bg:  #f5f3ff; --ag-bd:  #7c3aed; --ag-hi:  #4c1d95; --ag-lo:  #ede9fe;
+  --db-bg:  #f0f9ff; --db-bd:  #0284c7; --db-hi:  #0c4a6e; --db-lo:  #e0f2fe;
+  --ex-bg:  #fffbeb; --ex-bd:  #d97706; --ex-hi:  #78350f; --ex-lo:  #fef3c7;
+  --llm-bg: #fef3c7; --llm-bd: #f59e0b; --llm-hi: #78350f;
+  --gn-bg:  #f0fdf4; --gn-bd:  #22c55e; --gn-hi:  #14532d;
+  --rd-bg:  #fef2f2; --rd-bd:  #ef4444; --rd-hi:  #7f1d1d;
+  --vi-bg:  #fdf4ff; --vi-bd:  #a855f7; --vi-hi:  #581c87;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-width: 1680px;
+  padding: 28px 40px 48px;
+  line-height: 1.4;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.hdr {
+  text-align: center;
+  margin-bottom: 18px;
+}
+.hdr h1 {
+  font-size: 23px; font-weight: 800;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px; color: var(--text);
+}
+.hdr p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.hdr-line {
+  border: none; border-top: 1.5px solid #e2e8f0;
+  margin: 12px 0 14px;
+}
+
+/* ── Legend ──────────────────────────────────────────────────────────── */
+.legend {
+  display: flex; justify-content: center; gap: 18px;
+  flex-wrap: wrap; margin-bottom: 18px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; color: var(--muted);
+}
+.ld { width: 13px; height: 13px; border-radius: 3px; border: 2px solid; }
+
+/* ── Layer ───────────────────────────────────────────────────────────── */
+.layer {
+  border-radius: 12px; border: 2px solid;
+  padding: 13px 14px 12px;
+  position: relative;
+}
+.layer + .layer { margin-top: 0; }
+.layer.fe  { background: var(--fe-bg);  border-color: var(--fe-bd);  }
+.layer.be  { background: var(--be-bg);  border-color: var(--be-bd);  }
+.layer.db  { background: var(--db-bg);  border-color: var(--db-bd);  flex: 1; }
+.layer.ext { background: var(--ex-bg);  border-color: var(--ex-bd);  flex: 1; }
+
+/* ── Layer title ─────────────────────────────────────────────────────── */
+.layer-title {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.8px;
+  text-transform: uppercase; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.fe  .layer-title { color: var(--fe-hi); }
+.be  .layer-title { color: var(--be-hi); }
+.db  .layer-title { color: var(--db-hi); }
+.ext .layer-title { color: var(--ex-hi); }
+
+.tbadge {
+  font-size: 9px; font-weight: 600; font-family: 'Courier New', monospace;
+  padding: 1px 7px; border-radius: 10px; border: 1px solid;
+}
+.fe  .tbadge { background: var(--fe-lo);  border-color: var(--fe-bd);  color: var(--fe-hi);  }
+.be  .tbadge { background: var(--be-lo);  border-color: var(--be-bd);  color: var(--be-hi);  }
+.db  .tbadge { background: var(--db-lo);  border-color: var(--db-bd);  color: var(--db-hi);  }
+.ext .tbadge { background: var(--ex-lo);  border-color: var(--ex-bd);  color: var(--ex-hi);  }
+
+/* ── Middleware bar ──────────────────────────────────────────────────── */
+.mw-bar {
+  background: rgba(22,163,74,.07); border: 1px solid var(--be-bd);
+  border-radius: 6px; padding: 5px 14px; margin-bottom: 10px;
+  font-size: 10px; color: var(--be-hi); font-family: 'Courier New', monospace;
+  display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+}
+.mw-bar span { font-weight: 700; }
+
+/* ── Routers grid ────────────────────────────────────────────────────── */
+.routers { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 10px; }
+.router {
+  background: var(--white); border: 1.5px solid #86efac;
+  border-radius: 7px; padding: 8px 10px; font-size: 10px;
+}
+.router .rpath {
+  font-weight: 700; font-family: 'Courier New', monospace;
+  color: var(--be-hi); font-size: 10.5px; margin-bottom: 4px;
+}
+.router .rdesc { font-size: 9.5px; color: var(--muted); line-height: 1.45; }
+
+/* ── Sub-section ─────────────────────────────────────────────────────── */
+.sub-section {
+  border-radius: 8px; border: 1.5px solid; padding: 9px 11px; margin-bottom: 8px;
+}
+.sub-section:last-child { margin-bottom: 0; }
+.sub-section.ag { background: var(--ag-bg); border-color: var(--ag-bd); }
+.sub-section.llm { background: var(--llm-bg); border-color: var(--llm-bd); }
+
+.sub-title {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+  text-transform: uppercase; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ag  .sub-title { color: var(--ag-hi); }
+.llm .sub-title { color: var(--llm-hi); }
+
+/* ── Pipeline ────────────────────────────────────────────────────────── */
+.pipeline { display: flex; gap: 5px; align-items: stretch; }
+.ps {
+  flex: 1; min-width: 0;
+  background: var(--white); border: 1.5px solid var(--ag-bd);
+  border-radius: 7px; padding: 9px 8px 7px; font-size: 10px;
+  position: relative;
+}
+.ps.hitl { border-color: var(--rd-bd); background: var(--rd-bg); }
+
+.step-num {
+  position: absolute; top: -10px; left: 8px;
+  width: 19px; height: 19px; border-radius: 50%;
+  background: var(--ag-bd); color: #fff;
+  font-size: 9px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.ps.hitl .step-num { background: var(--rd-bd); }
+
+.ps-name {
+  font-weight: 700; color: var(--ag-hi); font-size: 10px;
+  margin-bottom: 3px; padding-top: 5px;
+}
+.ps.hitl .ps-name { color: var(--rd-hi); }
+
+.ps-state {
+  font-size: 8.5px; font-family: 'Courier New', monospace;
+  color: var(--ag-bd); margin-bottom: 4px;
+}
+.ps.hitl .ps-state { color: var(--rd-bd); }
+
+.ps-body { font-size: 9px; color: var(--muted); line-height: 1.4; }
+
+/* ── Tags ────────────────────────────────────────────────────────────── */
+.tag {
+  display: inline-block; padding: 1px 5px; border-radius: 4px;
+  font-size: 8.5px; font-weight: 700; font-family: 'Courier New', monospace;
+  vertical-align: middle; border: 1px solid; margin: 1px 1px 2px 0;
+}
+.tag.llm   { background: var(--llm-bg); border-color: var(--llm-bd); color: var(--llm-hi); }
+.tag.ta    { background: var(--gn-bg);  border-color: var(--gn-bd);  color: var(--gn-hi);  }
+.tag.tb    { background: var(--llm-bg); border-color: var(--llm-bd); color: var(--llm-hi); }
+.tag.pause { background: var(--rd-bg);  border-color: var(--rd-bd);  color: var(--rd-hi);  }
+.tag.new   { background: var(--vi-bg);  border-color: var(--vi-bd);  color: var(--vi-hi);  }
+.tag.cred  { background: #fdf4ff;       border-color: #a855f7;       color: #581c87;        }
+
+/* ── GPT Engine cards ────────────────────────────────────────────────── */
+.gpt-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.gpt-card {
+  background: var(--white); border: 1.5px solid var(--llm-bd);
+  border-radius: 7px; padding: 8px 10px;
+}
+.gpt-card .gc-name { font-weight: 700; color: var(--llm-hi); font-size: 10.5px; margin-bottom: 4px; }
+.gpt-card .gc-body { font-size: 9.5px; color: var(--muted); line-height: 1.4; }
+
+.cost-bar {
+  margin-top: 8px; background: #fef9c3; border: 1px solid #fde68a;
+  border-radius: 5px; padding: 5px 12px;
+  font-size: 9.5px; color: var(--llm-hi);
+  font-family: 'Courier New', monospace;
+}
+
+/* ── Frontend pages ──────────────────────────────────────────────────── */
+.fe-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 10px; }
+.fe-group {
+  background: var(--white); border: 1.5px solid #93c5fd;
+  border-radius: 7px; padding: 9px 11px;
+}
+.fg-title {
+  font-weight: 700; color: var(--fe-hi); font-size: 10.5px;
+  border-bottom: 1px solid var(--fe-lo); padding-bottom: 5px; margin-bottom: 6px;
+}
+.fg-item {
+  font-size: 9.5px; color: var(--muted); padding: 2px 0;
+  display: flex; align-items: baseline; gap: 4px;
+}
+.fg-item::before { content: '›'; color: var(--dim); font-size: 9px; flex-shrink: 0; }
+
+/* ── Context bar ─────────────────────────────────────────────────────── */
+.ctx-bar {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  align-items: center; font-size: 9.5px; color: var(--muted);
+}
+.ctx-pill {
+  background: var(--fe-lo); border: 1px solid var(--fe-bd);
+  border-radius: 11px; padding: 2px 10px;
+  font-size: 9.5px; color: var(--fe-hi); font-weight: 600;
+}
+.ctx-sep { color: var(--dim); font-size: 11px; }
+
+/* ── DB tables ───────────────────────────────────────────────────────── */
+.db-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; }
+.dbt {
+  background: var(--white); border: 1.5px solid #7dd3fc;
+  border-radius: 6px; padding: 7px 9px;
+}
+.dbt .tn {
+  font-weight: 700; color: var(--db-hi);
+  font-family: 'Courier New', monospace; font-size: 10px;
+  margin-bottom: 3px;
+  display: flex; align-items: center; gap: 5px;
+}
+.dbt .tf { font-size: 9px; color: var(--muted); font-family: 'Courier New', monospace; line-height: 1.4; }
+
+/* ── External services ───────────────────────────────────────────────── */
+.ext-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 7px; }
+.ext-card {
+  background: var(--white); border: 1.5px solid #fcd34d;
+  border-radius: 6px; padding: 8px 10px;
+}
+.ext-card .en { font-weight: 700; color: var(--ex-hi); font-size: 10.5px; margin-bottom: 3px; }
+.ext-card .ed { font-size: 9.5px; color: var(--muted); line-height: 1.4; }
+
+/* ── Arrow connectors ────────────────────────────────────────────────── */
+.arrow-row {
+  text-align: center; padding: 4px 0;
+  font-size: 12px; color: var(--dim); font-family: 'Courier New', monospace;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.bottom-arrows {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  padding: 4px 0;
+}
+.ba-col { text-align: center; font-size: 11px; color: var(--dim); font-family: 'Courier New', monospace; }
+
+/* ── Bottom row ──────────────────────────────────────────────────────── */
+.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.footer {
+  margin-top: 14px; padding-top: 10px; border-top: 1px solid #e2e8f0;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 9px; color: var(--dim); font-family: 'Courier New', monospace;
+}
+
+/* ── Wrapper ─────────────────────────────────────────────────────────── */
+.wrap { max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<div class="hdr">
+  <h1>MCP HUB &mdash; SYSTEM ARCHITECTURE</h1>
+  <p>Full-stack overview &nbsp;&middot;&nbsp; Auth (OTP 2FA + Google/GitHub OAuth2) &nbsp;&middot;&nbsp; API Creation Pipeline &nbsp;&middot;&nbsp; GPT-4o Tool Engine &nbsp;&middot;&nbsp; Subscription &amp; Credits &nbsp;&middot;&nbsp; Smart Chunking (Type A + B) &nbsp;&middot;&nbsp; Observability</p>
+</div>
+<hr class="hdr-line">
+
+<!-- ── Legend ─────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-item"><div class="ld" style="border-color:#3b82f6;background:#eff6ff"></div> Frontend (React)</div>
+  <div class="legend-item"><div class="ld" style="border-color:#16a34a;background:#f0fdf4"></div> Backend (FastAPI)</div>
+  <div class="legend-item"><div class="ld" style="border-color:#7c3aed;background:#f5f3ff"></div> Agent Pipeline</div>
+  <div class="legend-item"><div class="ld" style="border-color:#f59e0b;background:#fef3c7"></div> LLM / GPT-4o</div>
+  <div class="legend-item"><div class="ld" style="border-color:#0284c7;background:#f0f9ff"></div> Database</div>
+  <div class="legend-item"><div class="ld" style="border-color:#d97706;background:#fffbeb"></div> External Services</div>
+  <div class="legend-item"><div class="ld" style="border-color:#22c55e;background:#f0fdf4"></div> Type A (no LLM)</div>
+  <div class="legend-item"><div class="ld" style="border-color:#a855f7;background:#fdf4ff"></div> New in v2</div>
+</div>
+
+<!-- ══ FRONTEND ═══════════════════════════════════════════════════════════ -->
+<div class="layer fe">
+  <div class="layer-title">
+    ⎔&nbsp; FRONTEND
+    <span class="tbadge">React 18</span>
+    <span class="tbadge">Vite</span>
+    <span class="tbadge">Tailwind CSS</span>
+    <span class="tbadge">React Router v6</span>
+    <span class="tbadge">Axios</span>
+  </div>
+
+  <div class="fe-grid">
+    <div class="fe-group">
+      <div class="fg-title">🔐 Authentication</div>
+      <div class="fg-item">Login &mdash; 2-step OTP flow <span class="tag new">v2</span></div>
+      <div class="fg-item">Register (email + password)</div>
+      <div class="fg-item">AuthCallback &mdash; OAuth token handler <span class="tag new">v2</span></div>
+      <div class="fg-item">Google &amp; GitHub sign-in buttons <span class="tag new">v2</span></div>
+      <div class="fg-item">OTP code input (step 2 UI) <span class="tag new">v2</span></div>
+    </div>
+    <div class="fe-group">
+      <div class="fg-title">🏗 API Creation</div>
+      <div class="fg-item">ChatBuilder — natural language</div>
+      <div class="fg-item">DocUpload — PDF / DOCX / JSON / YAML</div>
+      <div class="fg-item">HITLValidator — review &amp; edit</div>
+      <div class="fg-item">Confidence dots (GREEN / YELLOW / RED)</div>
+      <div class="fg-item">Auth credentials input</div>
+    </div>
+    <div class="fe-group">
+      <div class="fg-title">🤖 GPT-4o Chat Hub</div>
+      <div class="fg-item">ChatGPTHub — connect APIs + chat</div>
+      <div class="fg-item">AccessGate: none / pending / rejected <span class="tag new">v2</span></div>
+      <div class="fg-item">NoCreditsGate — credit wall <span class="tag new">v2</span></div>
+      <div class="fg-item">Credit balance StatCard (violet) <span class="tag new">v2</span></div>
+      <div class="fg-item">Tool execution sidebar</div>
+    </div>
+    <div class="fe-group">
+      <div class="fg-title">⚙ Management</div>
+      <div class="fg-item">Registry — browse saved APIs</div>
+      <div class="fg-item">Monitor — session/tool observability</div>
+      <div class="fg-item">Admin — Users tab (roles)</div>
+      <div class="fg-item">Admin — Chat Access tab <span class="tag new">v2</span></div>
+      <div class="fg-item">Approve / reject / top-up credits UI <span class="tag new">v2</span></div>
+    </div>
+  </div>
+
+  <div class="ctx-bar">
+    <strong style="font-size:9.5px;color:#475569">Context:</strong>
+    <span class="ctx-pill">AuthContext <small style="opacity:.7">(JWT &middot; user &middot; role &middot; loginWithToken)</small></span>
+    <span class="ctx-pill">ThemeContext <small style="opacity:.7">(dark / light)</small></span>
+    <span class="ctx-pill">LanguageContext <small style="opacity:.7">(EN / JA i18n)</small></span>
+    <span class="ctx-sep">|</span>
+    <strong style="font-size:9.5px;color:#475569">API Client:</strong>
+    <span class="ctx-pill">api.js &mdash; Axios + JWT Bearer interceptor</span>
+    <span class="ctx-pill">authApi &middot; agentApi &middot; chatgptApi &middot; subscriptionApi &middot; registryApi &middot; monitorApi &middot; adminApi</span>
+  </div>
+</div>
+
+<!-- connector -->
+<div class="arrow-row">↕&nbsp; <span>HTTP REST + JWT Bearer Token</span></div>
+
+<!-- ══ BACKEND ════════════════════════════════════════════════════════════ -->
+<div class="layer be">
+  <div class="layer-title">
+    ⬡&nbsp; BACKEND
+    <span class="tbadge">FastAPI</span>
+    <span class="tbadge">SQLAlchemy 2</span>
+    <span class="tbadge">Python 3.13</span>
+    <span class="tbadge">Alembic</span>
+    <span class="tbadge">Pydantic v2</span>
+    <span class="tbadge">asyncio</span>
+    <span class="tbadge">Jose JWT</span>
+    <span class="tbadge">Fernet encryption</span>
+  </div>
+
+  <div class="mw-bar">
+    <span>Middleware:</span>
+    CORS (configurable origins)
+    <span style="color:#94a3b8">&middot;</span>
+    slowapi Rate Limiting (5–60 req/min per endpoint)
+    <span style="color:#94a3b8">&middot;</span>
+    JWT Auth Guard (get_current_user dependency)
+    <span style="color:#94a3b8">&middot;</span>
+    Global exception handlers
+  </div>
+
+  <!-- Routers -->
+  <div class="routers">
+    <div class="router">
+      <div class="rpath">/api/auth</div>
+      <div class="rdesc">
+        POST /register<br>
+        POST /login → OTP step 1 <span class="tag new">v2</span><br>
+        POST /verify-otp → JWT <span class="tag new">v2</span><br>
+        GET /me<br>
+        GET /admin/users<br>
+        PATCH /admin/users/{id}/role<br>
+        PATCH /admin/users/{id}/active
+      </div>
+    </div>
+    <div class="router">
+      <div class="rpath">/api/auth (OAuth) <span class="tag new">v2</span></div>
+      <div class="rdesc">
+        GET /google → redirect<br>
+        GET /google/callback → JWT<br>
+        GET /github → redirect<br>
+        GET /github/callback → JWT<br>
+        email fallback: /user/emails<br>
+        find_or_create · link provider
+      </div>
+    </div>
+    <div class="router">
+      <div class="rpath">/api/agent</div>
+      <div class="rdesc">
+        POST /manual (form fields)<br>
+        POST /chat (natural language)<br>
+        POST /upload (multipart file)<br>
+        GET /{id} (poll state)<br>
+        POST /{id}/hitl (human edits)<br>
+        POST /{id}/confirm
+      </div>
+    </div>
+    <div class="router">
+      <div class="rpath">/api/chatgpt</div>
+      <div class="rdesc">
+        POST /connect/{id}<br>
+        DELETE /disconnect/{id}<br>
+        GET /registry<br>
+        GET /tools/{id}<br>
+        POST /chat (agentic loop)<br>
+        GET /stats
+      </div>
+    </div>
+    <div class="router">
+      <div class="rpath">/api/subscription <span class="tag new">v2</span></div>
+      <div class="rdesc">
+        POST /request (access req)<br>
+        GET /status (credits + status)<br>
+        GET /admin/requests (pending)<br>
+        GET /admin/all-users<br>
+        PATCH /admin/{id}/approve<br>
+        PATCH /admin/{id}/reject<br>
+        POST /admin/{id}/top-up
+      </div>
+    </div>
+    <div class="router">
+      <div class="rpath">/api/registry<br>/api/monitor</div>
+      <div class="rdesc">
+        GET/DELETE /registry<br>
+        GET /monitor/overview<br>
+        GET /monitor/active<br>
+        GET /monitor/sessions<br>
+        GET /monitor/tool-calls<br>
+        GET /monitor/pipeline
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent Pipeline sub-section -->
+  <div class="sub-section ag">
+    <div class="sub-title">
+      ⚙&nbsp; AGENT PIPELINE &mdash; Async State Machine (Orchestrator)
+      &nbsp;<small style="font-size:9px;color:#6d28d9;font-weight:600;letter-spacing:0">INIT → CLASSIFYING → PARSING → SCHEMA_GENERATING → CONFIDENCE_SCORING → HITL_PENDING → VALIDATING → API_TESTING → SAVING → SAVED</small>
+    </div>
+
+    <div class="pipeline">
+      <div class="ps">
+        <div class="step-num">1</div>
+        <div class="ps-name">InputClassifier</div>
+        <div class="ps-state">CLASSIFYING</div>
+        <div class="ps-body">
+          Detect DOC vs CHAT mode.<br>
+          DOC → set file_path.<br>
+          CHAT → raw_input.
+        </div>
+      </div>
+
+      <div class="ps">
+        <div class="step-num">2</div>
+        <div class="ps-name">ParsingAgent<br>doc_extractor<br>smart_chunker</div>
+        <div class="ps-state">PARSING</div>
+        <div class="ps-body">
+          <span class="tag ta">Type A</span> OpenAPI JSON/YAML → direct parse, 0 LLM<br>
+          <span class="tag ta">Type A</span> Postman → recursive items, 0 LLM<br>
+          <span class="tag tb">Type B</span> PDF / DOCX / TXT → 2-pass LLM<br>
+          <span style="font-size:8.5px;color:#94a3b8">Pass 1: index [{method,path}]<br>Pass 2: regex section → parallel extract</span>
+        </div>
+      </div>
+
+      <div class="ps">
+        <div class="step-num">3</div>
+        <div class="ps-name">SchemaAgent</div>
+        <div class="ps-state">SCHEMA_GENERATING</div>
+        <div class="ps-body">
+          <span class="tag llm">GPT-4o</span> asyncio.gather()<br>
+          1 call per endpoint (≤2048 tok)<br>
+          + 1 meta call<br>
+          input_schema · required[]
+        </div>
+      </div>
+
+      <div class="ps">
+        <div class="step-num">4</div>
+        <div class="ps-name">ConfidenceAgent</div>
+        <div class="ps-state">CONFIDENCE_SCORING</div>
+        <div class="ps-body">
+          <span class="tag llm">GPT-4o</span> Score 0–100<br>
+          per field GREEN ≥70<br>
+          YELLOW 40–69 · RED &lt;40<br>
+          Fix hints for low fields
+        </div>
+      </div>
+
+      <div class="ps hitl">
+        <div class="step-num">5</div>
+        <div class="ps-name">HITL Pause</div>
+        <div class="ps-state">HITL_PENDING</div>
+        <div class="ps-body">
+          <span class="tag pause">PAUSE</span> Awaits human review<br>
+          Edit fields in browser<br>
+          Add / remove endpoints<br>
+          Provide auth credentials
+        </div>
+      </div>
+
+      <div class="ps">
+        <div class="step-num">6</div>
+        <div class="ps-name">SchemaValidator</div>
+        <div class="ps-state">VALIDATING</div>
+        <div class="ps-body">
+          Rule-based checks only<br>
+          name · base_url · paths<br>
+          methods · required fields<br>
+          No LLM
+        </div>
+      </div>
+
+      <div class="ps">
+        <div class="step-num">7</div>
+        <div class="ps-name">ApiTestAgent</div>
+        <div class="ps-state">API_TESTING</div>
+        <div class="ps-body">
+          <span class="tag llm">GPT-4o</span> httpx async<br>
+          Live GET calls per endpoint<br>
+          Assess response quality<br>
+          Store api_test_results
+        </div>
+      </div>
+
+      <div class="ps">
+        <div class="step-num">8</div>
+        <div class="ps-name">ApiSaver</div>
+        <div class="ps-state">SAVING → SAVED</div>
+        <div class="ps-body">
+          Fernet encrypt auth creds<br>
+          Write ApiDefinition<br>
+          Write ApiEndpoints<br>
+          Return result_id
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GPT-4o Engine sub-section -->
+  <div class="sub-section llm">
+    <div class="sub-title">
+      <span style="background:var(--llm-bg);border:1px solid var(--llm-bd);border-radius:5px;padding:1px 8px;font-size:9.5px;color:var(--llm-hi)">GPT-4o</span>
+      GPT-4o TOOL ENGINE &mdash; ChatGPTHub Feature
+      <span class="tag new">v2 subscription gate</span>
+    </div>
+
+    <div class="gpt-grid">
+      <div class="gpt-card">
+        <div class="gc-name">Subscription Gate <span class="tag new">v2</span></div>
+        <div class="gc-body">
+          Checks User.chat_status:<br>
+          &nbsp;· <strong>none</strong> → 403 "chat_access:none"<br>
+          &nbsp;· <strong>pending</strong> → 403 "chat_access:pending"<br>
+          &nbsp;· <strong>rejected</strong> → 403 "chat_access:rejected"<br>
+          &nbsp;· <strong>approved + credits=0</strong> → 402<br>
+          Admins bypass gate entirely.
+        </div>
+      </div>
+      <div class="gpt-card">
+        <div class="gc-name">Context Layer</div>
+        <div class="gc-body">
+          Per-session conversation history.<br>
+          Build system prompt from connected APIs.<br>
+          Inject last N turns as messages.<br>
+          Auto-expire idle sessions (2 h).<br>
+          Keyed by session_id in-memory.
+        </div>
+      </div>
+      <div class="gpt-card">
+        <div class="gc-name">Tool Orchestrator</div>
+        <div class="gc-body">
+          Translate ApiDefinition → OpenAI tool schema.<br>
+          Execute tool_calls via asyncio.gather().<br>
+          Retry with backoff on failure.<br>
+          Log to tool_call_logs table.<br>
+          Return results to GPT-4o for next turn.
+        </div>
+      </div>
+    </div>
+
+    <div class="cost-bar">
+      <strong>Cost formula (GPT-4o):</strong>
+      &nbsp;cost = (prompt_tokens × $2.50 + completion_tokens × $10.00) / 1,000,000
+      &nbsp;&nbsp;·&nbsp;&nbsp; Deducted from User.credits after full agentic loop
+      &nbsp;&nbsp;·&nbsp;&nbsp; Logged to token_usage table (user_id · session_id · cost_usd)
+    </div>
+  </div>
+</div>
+
+<!-- bottom connectors -->
+<div class="bottom-arrows">
+  <div class="ba-col">↕&nbsp; SQL / SQLAlchemy ORM</div>
+  <div class="ba-col">↕&nbsp; HTTPS &middot; OAuth2 &middot; SMTP &middot; REST</div>
+</div>
+
+<!-- ══ BOTTOM ROW ═════════════════════════════════════════════════════════ -->
+<div class="bottom-row">
+
+  <!-- DATABASE -->
+  <div class="layer db">
+    <div class="layer-title">
+      ⬢&nbsp; DATABASE
+      <span class="tbadge">PostgreSQL</span>
+      <span class="tbadge">SQLite (dev)</span>
+      <span class="tbadge">Alembic migrations</span>
+      <span class="tbadge">SQLAlchemy 2 ORM</span>
+    </div>
+
+    <div class="db-grid">
+      <div class="dbt">
+        <div class="tn">users <span class="tag new">v2 fields</span></div>
+        <div class="tf">
+          id · email · hashed_password (nullable)<br>
+          full_name · role (admin/user)<br>
+          is_active · created_at<br>
+          auth_provider (local/google/github)<br>
+          chat_status (none/pending/approved/rejected)<br>
+          credits (float)
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">agent_sessions</div>
+        <div class="tf">
+          id · mode (DOC/CHAT) · state<br>
+          raw_input · file_path · user_id<br>
+          extracted_schema (JSON)<br>
+          draft_api · confidence_map<br>
+          human_edits · final_api<br>
+          api_definition_id · error_log
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">api_definitions</div>
+        <div class="tf">
+          id · name · description<br>
+          base_url · version · auth_type<br>
+          visibility (PRIVATE/TEAM/PUBLIC)<br>
+          tags (JSON) · user_id<br>
+          source_session_id
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">api_endpoints</div>
+        <div class="tf">
+          id · api_definition_id (FK)<br>
+          name · description<br>
+          path · method<br>
+          input_schema (JSON)<br>
+          output_schema · headers<br>
+          auth_credentials (Fernet encrypted)
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">chatgpt_connections</div>
+        <div class="tf">
+          id · api_definition_id (FK)<br>
+          user_id · is_active<br>
+          connected_at
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">tool_call_logs</div>
+        <div class="tf">
+          id · api_definition_id<br>
+          endpoint_name<br>
+          arguments (JSON text)<br>
+          result (1000 char limit)<br>
+          success (bool) · called_at
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">token_usage <span class="tag new">v2</span></div>
+        <div class="tf">
+          id · user_id · session_id<br>
+          prompt_tokens<br>
+          completion_tokens<br>
+          total_tokens · cost_usd<br>
+          created_at
+        </div>
+      </div>
+      <div class="dbt">
+        <div class="tn">auth_config</div>
+        <div class="tf">
+          id · provider<br>
+          encrypted OAuth secrets<br>
+          client_id · redirect_uri<br>
+          scopes
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXTERNAL SERVICES -->
+  <div class="layer ext">
+    <div class="layer-title">
+      ⬡&nbsp; EXTERNAL SERVICES
+    </div>
+
+    <div class="ext-grid">
+      <div class="ext-card">
+        <div class="en">OpenAI GPT-4o</div>
+        <div class="ed">
+          AsyncOpenAI SDK.<br>
+          Used in: SchemaAgent (stage 3) · ConfidenceAgent (stage 4) · ApiTestAgent (stage 7) · ChatGPTHub agentic loop.<br>
+          Tool-use response format. JSON-enforced mode.
+        </div>
+      </div>
+      <div class="ext-card">
+        <div class="en">Google OAuth2 <span class="tag new">v2</span></div>
+        <div class="ed">
+          accounts.google.com/o/oauth2/auth<br>
+          Authorization code flow.<br>
+          Exchanges code → id_token.<br>
+          Decodes email from id_token payload.
+        </div>
+      </div>
+      <div class="ext-card">
+        <div class="en">GitHub OAuth2 <span class="tag new">v2</span></div>
+        <div class="ed">
+          github.com/login/oauth/authorize<br>
+          Authorization code flow.<br>
+          Fetches /user/emails for primary verified email fallback if email is null.
+        </div>
+      </div>
+      <div class="ext-card">
+        <div class="en">SMTP (Gmail) <span class="tag new">v2</span></div>
+        <div class="ed">
+          Port 587 STARTTLS.<br>
+          Sends OTP email on login.<br>
+          6-digit code · 10-min expiry<br>
+          5-attempt limit (in-memory OTPStore).
+        </div>
+      </div>
+      <div class="ext-card" style="grid-column: span 2; border-color:#fca5a5; background:#fff5f5;">
+        <div class="en" style="color:#7f1d1d;">User APIs (Live Endpoint Testing)</div>
+        <div class="ed">
+          During ApiTestAgent phase (stage 7), real HTTP requests are made to the API being registered &mdash; using httpx async client. Responses assessed by GPT-4o. Results stored in agent_sessions.api_test_results JSON.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /bottom-row -->
+
+<!-- ── Footer ─────────────────────────────────────────────────────────── -->
+<div class="footer">
+  <span>MCP Hub v2 &middot; Smart Chunking (Type A + B) &middot; Social OAuth2 (Google + GitHub) &middot; OTP 2FA &middot; Subscription &amp; Credits &middot; Fernet encrypted credentials</span>
+  <span>System Architecture &middot; Updated 2026-04-23</span>
+</div>
+
+</div><!-- /wrap -->
+</body>
+</html>

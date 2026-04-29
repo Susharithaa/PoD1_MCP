@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: Yahoo Search via SerpApi
+  version: 1.0.0
+  description: Search Yahoo results through SerpApi for MCP Hub testing.
+servers:
+  - url: https://serpapi.com
+security:
+  - serpApiKey: []
+components:
+  securitySchemes:
+    serpApiKey:
+      type: apiKey
+      in: query
+      name: api_key
+paths:
+  /search:
+    get:
+      summary: Search Yahoo
+      operationId: searchYahoo
+      description: Run a Yahoo web search and return structured search results.
+      parameters:
+        - name: engine
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [yahoo]
+            default: yahoo
+          description: Search engine selector. Always use yahoo.
+        - name: p
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query, for example weather in Chennai.
+        - name: vc
+          in: query
+          required: false
+          schema:
+            type: string
+            default: in
+          description: Country code for localized Yahoo search results.
+        - name: vl
+          in: query
+          required: false
+          schema:
+            type: string
+            default: lang_en
+          description: Language filter, for example lang_en.
+      responses:
+        "200":
+          description: Yahoo search results from SerpApi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  search_metadata:
+                    type: object
+                  search_parameters:
+                    type: object
+                  search_information:
+                    type: object
+                  organic_results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position:
+                          type: integer
+                        title:
+                          type: string
+                        link:
+                          type: string
+                        snippet:
+                          type: string

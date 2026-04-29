@@ -1,0 +1,37 @@
+sequenceDiagram
+    participant Orch as Orchestrator
+    participant ATA as ApiTestAgent
+    participant DB as Database
+    participant ExtAPI as External API
+
+    Orch->>ATA: run(session)
+    ATA->>ATA: auth_store = decrypt_creds(session.auth_credentials)
+    ATA->>ATA: Build auth headers and params from auth_store
+
+    loop for each endpoint in final_api.endpoints
+        ATA->>ATA: Generate dummy test args\nfill required params with sample values
+        ATA->>ATA: Build URL: base_url + path\nreplace {path_params}
+        ATA->>ExtAPI: HTTP request (method, url, args, auth, timeout=10s)
+
+        alt HTTP 2xx response
+            ExtAPI-->>ATA: 200 OK
+            ATA->>ATA: verdict = PASS
+        else HTTP 401 or 403
+            ExtAPI-->>ATA: 401 Unauthorized
+            ATA->>ATA: verdict = AUTH_REQUIRED
+        else HTTP 4xx or 5xx
+            ExtAPI-->>ATA: 404 or 500
+            ATA->>ATA: verdict = WARNING
+        else Connection error or timeout
+            ExtAPI-->>ATA: exception thrown
+            ATA->>ATA: verdict = UNREACHABLE
+        else No credentials but auth needed
+            ATA->>ATA: verdict = SKIPPED
+        end
+
+        ATA->>ATA: Append {endpoint, method, verdict, status_code, response_preview}
+    end
+
+    Note over ATA: Testing errors do NOT block save
+    ATA->>DB: UPDATE session\napi_test_results = verdicts list\nstate = SAVING
+    ATA-->>Orch: done → SAVING

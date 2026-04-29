@@ -1,0 +1,48 @@
+Sample Task Manager API
+
+Base URL:
+https://api.example.com
+
+Authentication:
+Use an API key in the Authorization header:
+Authorization: Bearer {api_key}
+
+Endpoints:
+
+1. List tasks
+GET /tasks
+Query parameters:
+- status: optional string, one of open, in_progress, done
+- assignee: optional string email address
+
+Response:
+200 OK with a JSON object containing an items array.
+
+2. Create task
+POST /tasks
+Body:
+- title: required string
+- description: optional string
+- dueDate: optional date in YYYY-MM-DD format
+- assignee: optional string email address
+
+Response:
+201 Created with the created task object.
+
+3. Update task status
+PATCH /tasks/{taskId}/status
+Path parameters:
+- taskId: required string
+Body:
+- status: required string, one of open, in_progress, done
+
+Response:
+200 OK with the updated task object.
+
+4. Delete task
+DELETE /tasks/{taskId}
+Path parameters:
+- taskId: required string
+
+Response:
+204 No Content.

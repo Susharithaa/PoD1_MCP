@@ -1,0 +1,33 @@
+stateDiagram-v2
+    [*] --> INIT : POST /agent/chat or /upload or /manual
+
+    INIT --> CLASSIFYING : orchestrator starts
+
+    CLASSIFYING --> PARSING : mode is CHAT or DOC
+    CLASSIFYING --> SCHEMA_GENERATING : mode is MANUAL skip LLM parsing
+
+    PARSING --> SCHEMA_GENERATING : extracted_schema saved
+
+    SCHEMA_GENERATING --> CONFIDENCE_SCORING : draft_api saved GPT-4o call 1
+
+    CONFIDENCE_SCORING --> HITL_PENDING : confidence_map saved GPT-4o call 2
+
+    HITL_PENDING --> VALIDATING : POST hitl or confirm human edits submitted
+
+    VALIDATING --> HITL_PENDING : validation_errors found user must fix
+    VALIDATING --> API_TESTING : all checks passed
+
+    API_TESTING --> SAVING : test verdicts recorded non-blocking
+
+    SAVING --> SAVED : ApiDefinition created
+
+    CLASSIFYING --> FAILED : exception
+    PARSING --> FAILED : exception
+    SCHEMA_GENERATING --> FAILED : LLM error or rate limit
+    CONFIDENCE_SCORING --> FAILED : LLM error
+    VALIDATING --> FAILED : unrecoverable error
+    API_TESTING --> FAILED : unrecoverable error
+    SAVING --> FAILED : DB error
+
+    SAVED --> [*]
+    FAILED --> [*]

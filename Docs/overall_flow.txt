@@ -1,0 +1,750 @@
+LLM Agents -
+  1. ParsingAgent - Parsing the Raw context into raw API structure including what are all parameters are needed 
+  and all flag details
+  2. SchemaAgent - To generate the Schema for API in proper format
+  3. Confidence Agent - Check the generated schema and provide confidence by checking the schema structure
+  4. After API testing asses the output brfore showing to customer
+
+Non LLM -
+  1. input_classifier
+  2. HITL 
+  3. SchemaValidator
+  4. API Saver
+
+**********************************************************************************************
+************************************ 
+**********************************************************************************************
+
+Case 1 - With Document submission
+  
+  input_classifier[DOC/Manual(chat)] (raw_input) --> LLM - ParsingAgent (Parse details into Raw API) --> LLM - SchemaAgent (Generating API in proper format) --> LLM - ConfidenceAgent (Depends on whatever data is generate) --> HITL --> SchemaValidator (Validate schema format is correct with all details required) --> LLM - API Testing (Validate if API is Reachable) --> API Saver 
+
+      
+      ****************************************************************************************************
+
+Case 2 - With chatbuilder
+
+  input_classifier [DOC/Manual(chat)] (raw_input) --> LLM - Schema Agent --> LLM- confidenceAgent --> HITL --> SchemaValidator -->
+  LLM - API-Testing --> API-saver 
+
+      ****************************************************************************************************
+
+Case - How chat works
+  Connect (Activate tools in DB) --> Message sent (Check relevancy of question and find out related tool and send the list to LLM) --> LLM- takes the relevant tools and find out which we should use for it --> Tool execution (check required Param --> Decrypts Creds if applicable --> Make actual call --> get response store in DB) --> LLM - Answer synthesis(question needs multiple tool calls — e.g. "Compare weather in Tokyo and London" — GPT-4o may call the weather tool twice in
+   sequence. Each call goes through steps 3→4→5 again. The loop caps at 5 to prevent infinite tool chaining.) 
+
+
+**********************************************************************************************
+************************************ 
+**********************************************************************************************
+Agent ① — input_classifier
+    File: agents/input_classifier.pyinput_classifier
+    Its only job is to figure out what kind of input arrived and make it readable.input_classifier
+    if file_path exists on disk  →  mode = "DOC",  read the file into raw_inputinput_classifier
+    else                         →  mode = "CHAT", raw_input is already the message textinput_classifier
+    For files it knows how to read:input_classifier
+    ┌───────────────────────────┬──────────────────────────────────────────────┐input_classifier
+    │         Extension         │                 How it reads                 │input_classifier
+    ├───────────────────────────┼──────────────────────────────────────────────┤input_classifier
+    │ .txt .md .yaml .yml .json │ open() UTF-8 read                            │input_classifier
+    ├───────────────────────────┼──────────────────────────────────────────────┤input_classifier
+    │ .pdf                      │ pypdf.PdfReader — extracts text page by page │input_classifier
+    ├───────────────────────────┼──────────────────────────────────────────────┤input_classifier
+    │ anything else             │ tries UTF-8 read anyway                      │input_classifier
+    └───────────────────────────┴──────────────────────────────────────────────┘input_classifier
+    Safety guard: If the content is longer than 60,000 characters (~15k tokens), it truncates and appends a note: "[NOTE: Contentinput_classifier
+    truncated... Extract endpoints from the visible portion.]" — so the next agent never hits OpenAI's context window limit.
+
+************************************ 
+Agent ② — ParsingAgent
+  File: agents/parsing_agent.py
+
+  Makes the first GPT-4o call. Takes the raw text (a chat message, a YAML file, a PDF) and extracts raw API structure from it.
+
+  System prompt instructs GPT-4o to return this exact shape:
+  {
+    "base_url": "...",
+    "auth_type": "BEARER | API_KEY | BASIC | NONE | UNKNOWN",
+    "endpoints": [
+      {
+        "path": "/resource/{id}",
+        "method": "GET",
+        "name": "snake_case_name",
+        "description": "...",
+        "parameters": [
+          { "name": "city", "type": "string", "required": true, "location": "query", "description": "..." }
+        ],
+        "response_example": {}
+      }
+    ]
+  }
+
+  Critical rules baked into the prompt:
+  - POST/PUT/PATCH body fields are the most commonly missed — explicitly told to never skip them
+  - Path params like {id} must appear with "location": "path", "required": true
+  - Only mark required: true if the docs explicitly say it
+  - Use null for unknowns, never invent data
+
+  Output saved to: session.extracted_schema
+
+************************************ 
+
+Agent ③ — SchemaAgent
+
+  File: agents/schema_agent.py
+
+  Makes the second GPT-4o call. Takes the raw extracted schema from Agent ② and reformats it into clean OpenAPI-compatible JSON that
+  the system can actually use.
+
+  The key transformation: raw parameters list → proper input_schema with JSON Schema format (type, properties, required array) —
+  because this is exactly what OpenAI's tool-calling API expects.
+
+  System prompt rules:
+  - Include ALL parameters regardless of location (query, path, body, header) inside input_schema.properties
+  - required array on a POST with no required fields = almost certainly wrong
+  - For arrays, add "items": {"type": "string"}
+  - Never return "properties": {} if the raw input shows params exist
+
+  Output shape:
+  {
+    "name": "Weather API",
+    "description": "...",
+    "base_url": "https://api.weather.com",
+    "version": "1.0.0",
+    "auth_type": "BEARER",
+    "endpoints": [{
+      "name": "get_forecast",
+      "path": "/forecast",
+      "method": "GET",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "city": { "type": "string", "description": "City name" }
+        },
+        "required": ["city"]
+      }
+    }]
+  }
+
+  Output saved to: session.draft_api
+
+************************************ 
+---
+  Agent ④ — ConfidenceAgent
+
+  File: agents/confidence_agent.py
+
+  Makes the third GPT-4o call. Reviews the draft_api and assigns a confidence score to every field using dot-notation keys.
+
+  Returns a flat map:
+  {
+    "name":                { "score": 95, "status": "HIGH",    "suggestion": null },
+    "base_url":            { "score": 40, "status": "LOW",     "suggestion": "Verify the base URL" },
+    "endpoints.0.path":    { "score": 88, "status": "HIGH",    "suggestion": null },
+    "endpoints.0.method":  { "score": 95, "status": "HIGH",    "suggestion": null },
+    "endpoints.0.auth_type":{ "score": 55,"status": "MEDIUM",  "suggestion": "Check if Bearer is correct" }
+  }
+
+  Status rules (built into the prompt):
+
+  ┌─────────────┬─────────┬─────────────────┐
+  │    Score    │ Status  │ Dot color on UI │
+  ├─────────────┼─────────┼─────────────────┤
+  │ ≥ 80        │ HIGH    │ 🟢 Green        │
+  ├─────────────┼─────────┼─────────────────┤
+  │ 50–79       │ MEDIUM  │ 🟡 Amber        │
+  ├─────────────┼─────────┼─────────────────┤
+  │ < 50        │ LOW     │ 🔴 Red          │
+  ├─────────────┼─────────┼─────────────────┤
+  │ null/absent │ MISSING │ ⚪ Grey         │
+  └─────────────┴─────────┴─────────────────┘
+
+  Output saved to: session.confidence_map → pipeline pauses → state = HITL_PENDING
+
+************************************ 
+Agent ⑤ — HITL (Human Review) — Not an agent, it's a pause
+
+  No code runs here. The pipeline stops. The frontend polls GET /api/agent/{id} every 1.8 seconds, detects HITL_PENDING, and renders
+  the editor with confidence dots. The human reviews, fixes RED/AMBER fields, and clicks Save — which calls POST
+  /api/agent/{id}/hitl.
+
+  The Orchestrator then calls _merge_edits(draft_api, human_edits) — a shallow merge that does full array replacement for endpoints
+  (entire new array from the form) or _index-based partial merge for legacy callers.
+
+ Agent ⑥ — SchemaValidator
+  File: agents/schema_validator.py
+  No LLM call. Pure Python rule-based validation on final_api. Collects all errors before returning (doesn't stop at first).
+
+  Rules checked:
+  1. api.name is not empty
+  2. api.base_url is not empty
+  3. base_url parses as http:// or https://
+  4. endpoints list is not empty
+  5. For each endpoint:
+     - path starts with "/"
+     - method in {GET, POST, PUT, DELETE, PATCH}
+     - name is not empty
+     - auth_type in {BEARER, API_KEY, BASIC, OAUTH2, NONE}
+
+  If any errors: session.validation_errors = [...], state reverts to HITL_PENDING — the form reopens showing the errors. Also
+  promotes final_api → draft_api so the user sees their last submission, not the original LLM output.
+
+************************************ 
+Agent ⑥ — SchemaValidator
+
+  File: agents/schema_validator.py
+
+  No LLM call. Pure Python rule-based validation on final_api. Collects all errors before returning (doesn't stop at first).
+
+  Rules checked:
+  1. api.name is not empty
+  2. api.base_url is not empty
+  3. base_url parses as http:// or https://
+  4. endpoints list is not empty
+  5. For each endpoint:
+     - path starts with "/"
+     - method in {GET, POST, PUT, DELETE, PATCH}
+     - name is not empty
+     - auth_type in {BEARER, API_KEY, BASIC, OAUTH2, NONE}
+
+  If any errors: session.validation_errors = [...], state reverts to HITL_PENDING — the form reopens showing the errors. Also
+  promotes final_api → draft_api so the user sees their last submission, not the original LLM output
+
+*********************************** 
+ Agent ⑦ — ApiTestAgent
+
+  File: agents/api_test_agent.py
+
+  Makes live HTTP calls to the actual API and then makes a fourth GPT-4o call to assess the response. Results are purely
+  informational — they never block saving.
+
+  Skip rules (no HTTP call made):
+  - method != GET — skipped to avoid side effects (POST/PUT/PATCH/DELETE)
+  - auth required and no credentials provided → verdict = AUTH_REQUIRED
+  - no base_url → skipped
+
+  For GET endpoints that run:
+  1. Generates test params from input_schema using smart name hints:
+  "city" → "London",  "lat" → 51.5,  "lon" → -0.13
+  "id"   → "1",       "page" → 1,     "limit" → 10
+  "date" → "2024-01-15", "email" → "test@example.com"
+  2. Substitutes {path_params} in the URL
+  3. Calls httpx.AsyncClient(timeout=8.0, follow_redirects=True, verify=False)
+  4. Truncates response to 500 chars
+  5. Sends to GPT-4o with status code + body for assessment
+
+  Verdict mapping:
+
+  ┌─────────────────────────────────────────┬───────────────┐
+  │                 Result                  │    Verdict    │
+  ├─────────────────────────────────────────┼───────────────┤
+  │ HTTP 2xx + body looks right             │ PASS          │
+  ├─────────────────────────────────────────┼───────────────┤
+  │ HTTP 401/403                            │ AUTH_REQUIRED │
+  ├─────────────────────────────────────────┼───────────────┤
+  │ Reachable but wrong response            │ WARNING       │
+  ├─────────────────────────────────────────┼───────────────┤
+  │ Connection refused / timeout / DNS fail │ UNREACHABLE   │
+  ├─────────────────────────────────────────┼───────────────┤
+  │ Skipped by rule                         │ SKIPPED       │
+  └─────────────────────────────────────────┴───────────────┘
+
+  Output saved to: session.api_test_results
+
+ Agent ⑧ — ApiSaver
+
+  File: agents/api_saver.py
+
+  No LLM call. Pure DB write. Creates the permanent ApiDefinition + ApiEndpoint rows.
+
+  What it writes:
+  ApiDefinition(
+      id = uuid4(),
+      name, description, base_url,
+      visibility = "PRIVATE",   # always starts private
+      source_session_id = session.id,
+      user_id = session.user_id,
+  )
+
+  # For each endpoint:
+  ApiEndpoint(
+      id = uuid4(),
+      api_definition_id = definition.id,
+      name, description, path, method,
+      input_schema,   # ← this is the JSON Schema used by OpenAI tool-calling
+      output_schema,
+      auth_type,
+      auth_credentials = encrypt_creds(creds),  # ← Fernet encrypted
+  )
+
+  Credential resolution logic:
+  if auth_store.mode == "per_endpoint":  use creds_list[i]
+  else:                                  use same creds for every endpoint
+
+  Final state: session.api_definition_id = definition.id, session.state = "SAVED"
+
+
+**********************************************************************************************
+************************************ 
+**********************************************************************************************
+ User types message
+          ↓
+  ┌─────────────────────────────────────┐
+  │  CONTEXT LAYER                      │
+  │  - Creates/loads session            │
+  │  - Builds system prompt             │
+  │    (who you are, which APIs,        │
+  │     today's date, guidelines)       │
+  │  - Injects conversation history     │
+  └─────────────────────────────────────┘
+          ↓
+     GPT-4o Call #1
+     (sees full context + tools)
+          ↓
+     Does GPT-4o want to call tools?
+          │
+     NO ──┴──► Return answer directly
+          │
+         YES
+          ↓
+  ┌─────────────────────────────────────┐
+  │  ORCHESTRATOR                       │
+  │  - Runs all tool calls in PARALLEL  │
+  │  - Retries failed calls (2x)        │
+  │  - Isolates failures                │
+  └─────────────────────────────────────┘
+          ↓
+     Real HTTP calls to external APIs
+          ↓
+     Results fed back to GPT-4o
+          ↓
+     GPT-4o Call #2
+     (synthesizes final answer)
+          ↓
+  ┌─────────────────────────────────────┐
+  │  CONTEXT LAYER (save)               │
+  │  - Saves full turn to session       │
+  │  - Next message sees this history   │
+  └─────────────────────────────────────┘
+          ↓
+     Response + session_id → Frontend
+
+**********************************************************************************************
+************************************ 
+**********************************************************************************************
+ Data model additions:
+  User:
+  + chat_status: "none" | "pending" | "approved" | "rejected"
+  + credits: Decimal  ← USD balance (e.g. 5.00 = $5.00)
+
+  New table — token_usage:
+    user_id, prompt_tokens, completion_tokens, cost_usd, created_at
+
+  Flow:
+  User clicks "Request Access"
+          ↓
+  POST /api/chat-access/request  →  chat_status = "pending"
+          ↓
+  Admin sees request in Admin panel → Approve / Reject
+          ↓
+  Admin tops up credits (e.g. $5.00)
+          ↓
+  User can now chat — each request deducts tokens × GPT-4o price
+          ↓
+  Block when credits = 0 (show "out of credits" message)
+
+  What gets built:
+
+  ┌───────────────┬────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │     Area      │                                            Changes                                             │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Backend       │ chat_status + credits on User, TokenUsage model, access request routes, enforce in chat router │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Admin panel   │ New "Chat Access" tab — pending requests, approve/reject, top up credits                       │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ MCP Chat page │ Request access button → pending state → approved with credit balance shown                     │
+  └───────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  GPT-4o cost formula:
+  cost = (prompt_tokens × $2.50 + completion_tokens × $10.00) / 1,000,000
+
+
+
+
+**********************************************************************************************
+************************************ 
+**********************************************************************************************
+
+ User uploads file (PDF / DOCX / JSON / YAML / TXT / Postman)
+                          │
+                          ▼
+              ┌─ InputClassifier ─────────────┐
+              │  Detects: file exists → DOC   │
+              │  Sets mode = "DOC"            │
+              └───────────────────────────────┘
+                          │
+                          ▼
+              ┌─ doc_extractor.py ────────────────────────────────┐
+              │  PDF    → pypdf → plain text                      │
+              │  DOCX   → python-docx → plain text               │
+              │  JSON   → detect OpenAPI / Postman / generic      │
+              │  YAML   → convert to JSON → detect format        │
+              │  TXT/MD → read as-is                             │
+              │                                                   │
+              │  Returns: (text, format)                          │
+              └───────────────────────────────────────────────────┘
+                          │
+              ┌───────────┴──────────────────────┐
+              │                                  │
+       format = openapi / postman         format = text (PDF/DOCX/TXT)
+              │                                  │
+              ▼                                  ▼
+    ┌─ Option A ──────────────┐       ┌─ Option C (2-pass) ───────────────────┐
+    │  Parse structure        │       │                                       │
+    │  directly — no LLM      │       │  Pass 1 (1 LLM call):                 │
+    │                         │       │  Send full text → extract index       │
+    │  OpenAPI:               │       │  [ {method, path}, ... ]              │
+    │  iterate spec.paths     │       │  + base info (name, base_url, auth)   │
+    │  → 1 chunk per          │       │                                       │
+    │    {method + path}      │       │  Pass 2 (parallel LLM calls):         │
+    │                         │       │  For each endpoint in index:          │
+    │  Postman:               │       │  · Find text section (regex window)   │
+    │  iterate items          │       │  · 1 LLM call → full definition       │
+    │  → 1 chunk per request  │       │  All run in parallel                  │
+    └─────────────────────────┘       └───────────────────────────────────────┘
+              │                                  │
+              └───────────┬──────────────────────┘
+                          │
+                 [EndpointChunk list]
+                 each chunk = { method, path, content }
+                 one chunk = one endpoint = no boundary overlap
+                          │
+                          ▼
+              ┌─ SchemaAgent ─────────────────────────────────────┐
+              │  Parallel LLM calls (1 per endpoint + 1 for meta) │
+              │                                                   │
+              │  ┌─ meta call ──┐  ┌─ ep1 ─┐ ┌─ ep2 ─┐ ┌─ epN ─┐│
+              │  │ name         │  │ clean │ │ clean │ │ clean ││
+              │  │ base_url     │  │ schema│ │ schema│ │ schema ││
+              │  │ auth_type    │  └───────┘ └───────┘ └───────┘│
+              │  └──────────────┘                               │
+              │  Max 2048 tokens per call — never truncates      │
+              │  Merge all → draft_api                          │
+              └───────────────────────────────────────────────────┘
+                          │
+                          ▼
+                    HITL_PENDING
+              (user reviews + edits draft)
+                          │
+                          ▼
+              Validate → API Test → Save → Registry
+
+
+**********************************************************************************************
+************************************ 
+**********************************************************************************************
+
+Step 1 — Request enters the API router
+
+  Three entry points in routers/agent.py, all create an AgentSession and call orch.start() or orch.confirm():
+
+  POST /api/agent/chat — user typed a natural-language description:
+  body: { "message": "I want to add the OpenWeather API..." }
+  → Creates session with raw_input = body.message, file_path = None
+
+  POST /api/agent/upload — user uploaded a file:
+  multipart: file = api-1.json
+  → Saves file to uploads/{uuid}.json on disk
+  → Creates session with file_path = "uploads/abc123.json", raw_input = None
+
+  POST /api/agent/manual — user filled in a structured form (name, base_url, endpoints list):
+  → Skips the pipeline entirely
+  → Directly builds draft_api from the form fields
+  → Calls orch.confirm(session, {}, save_anyway=True) — jumps straight to validation+save, never goes to HITL
+
+  ---
+  Step 2 — Orchestrator runs the pre-HITL pipeline
+
+  steps = [
+      ("CLASSIFYING",        InputClassifier),
+      ("PARSING",            ParsingAgent),
+      ("SCHEMA_GENERATING",  SchemaAgent),
+      ("RECONCILING",        ReconciliationAgent),
+      ("CONFIDENCE_SCORING", ConfidenceAgent),
+  ]
+
+  Before each step: sets session.state = step_name, writes to DB. If any agent raises an exception, writes the error to session.error_log, sets
+  session.state = "FAILED", stops the pipeline (does not re-raise — the route returns the FAILED session to the frontend).
+
+  ---
+  Step 3 — InputClassifier
+
+  if session.file_path and os.path.exists(session.file_path):
+      session.mode = "DOC"
+      session.raw_input = session.file_path  # ParsingAgent reads this
+  else:
+      session.mode = "CHAT"
+      # raw_input already has the text message
+
+  Nothing more. Its only job is setting the mode flag.
+
+  ---
+  Step 4 — ParsingAgent
+
+  Two sub-steps happen here:
+
+  Sub-step 4a — doc_extractor.extract(file_path)
+
+  Reads the file and returns (text, fmt) where fmt is one of: openapi_json, openapi_yaml → converted to openapi_json, postman, text.
+
+  - .json → parses JSON, calls _detect_structured_format(data):
+    - If data has "openapi" key + "paths" key → openapi_json
+    - If data has "swagger" key + "paths" key → openapi_json
+    - If data has "info" key + "item" key + postman in schema URL → postman
+    - Otherwise → text
+  - .yaml/.yml → parses with PyYAML, same format detection, serialises back to JSON string
+  - .pdf → uses pypdf to extract text from all pages
+  - .docx → uses python-docx to join paragraph text
+  - .txt/.md → reads raw, then checks if it looks like JSON and tries structured detection
+  - Truncated/invalid JSON → _attempt_json_repair() walks the string char by char tracking {[ stack and appends missing closing brackets
+
+  Sub-step 4b — smart_chunker.chunk(text, fmt)
+
+  Returns (base_info, [EndpointChunk]). EndpointChunk has: method, path, hint ("GET /users"), content (raw text/JSON for that endpoint only).
+
+  For openapi_json — no LLM, pure dict traversal:
+  spec["paths"] = {
+    "/users": {
+      "get": { operationId, parameters, description, ... },
+      "post": { ... }
+    }
+  }
+  For each path → for each HTTP method found → collect path-level params + operation-level params → create one EndpointChunk. Content = json.dumps({path:
+  {method: operation}}).
+  Auth type detection: reads components.securitySchemes or securityDefinitions, maps http/bearer → "BEARER", apikey → "API_KEY", etc.
+
+  For postman — same idea, traverses collection["item"] recursively (supports nested folders), extracts request.method and request.url.
+
+  For text — two LLM passes in parallel:
+
+    Pass 1A — _INDEX_SYSTEM prompt: "list every endpoint in this document" → returns [{method, path}, ...]. Sends up to 60,000 chars of text.
+
+    Pass 1B — _BASE_INFO_SYSTEM prompt: "extract API name, base_url, auth_type" → returns {name, base_url, auth_type}. Sends first 8,000 chars.
+
+    Both run concurrently via asyncio.gather.
+
+    Pass 2 — for each endpoint discovered in Pass 1A: _find_section(text, method, path) finds the specific portion of the document that describes that
+    endpoint (uses regex to find markdown heading boundaries ##/### so sections don't overlap). Then calls _ENDPOINT_SYSTEM prompt: "extract the complete
+    definition of GET /users" → {path, method, name, description, parameters[], response_example}. All these run concurrently.
+
+  After chunking, session.extracted_schema is set:
+  {
+    "base_url":  "https://api.example.com",
+    "auth_type": "BEARER",
+    "name":      "Petstore API",
+    "_fmt":      "openapi_json",
+    "_chunks": [
+      { "method": "GET",  "path": "/pets",     "hint": "GET /pets",    "content": "{...}" },
+      { "method": "POST", "path": "/pets",     "hint": "POST /pets",   "content": "{...}" },
+      { "method": "GET",  "path": "/pets/{id}", "hint": "GET /pets/{id}", "content": "{...}" },
+    ]
+  }
+
+  ---
+  Step 5 — SchemaAgent
+
+  Takes _chunks and produces one endpoint dict per chunk. Up to 8 run in parallel via asyncio.Semaphore(8). Also runs _build_meta() in parallel with all the
+   endpoint tasks.
+
+  _build_meta() — LLM call with _META_SYSTEM:
+  input: { "name": "Petstore API", "base_url": "...", "auth_type": "BEARER" }
+  output: { "name": "...", "description": "...", "base_url": "...", "version": "...", "auth_type": "..." }
+
+  For each chunk — _build_endpoint(chunk, fmt):
+
+  First always runs deterministic_extractor.extract(chunk) → returns GroundTruth:
+
+  - If chunk content is valid JSON → _from_openapi():
+    - Walks data[path][method]["parameters"] → splits into path_params (in=path), query_params (in=query), headers (in=header)
+    - Reads requestBody.content["application/json"].schema for body schema
+    - Guarantees every {token} in the path URL has a corresponding path param
+  - If content is plain text → _from_text():
+    - path_params from regex on {tokens} in path
+    - query_params from regex matching ?param= or query: param patterns
+    - headers from regex matching Authorization, Content-Type, X-* patterns
+
+  Branch on _fmt:
+
+  If openapi_json or postman → structured path, zero LLM:
+  _build_from_structured(chunk, ground_truth):
+  - Name: reads operationId, converts camelCase/PascalCase to snake_case, strips non-identifier chars
+  - Description: reads operation["description"] or operation["summary"]
+  - input_schema: builds from ground_truth.path_params + ground_truth.query_params + ground_truth.body_schema
+  - Auth: checks headers for Authorization header
+
+  If text/pdf/etc. → LLM path:
+  Sends to chat_json(_ENDPOINT_SYSTEM, prompt) with:
+  ANCHOR VALUES (do not change):
+  {
+    "method": "GET",
+    "path": "/pets/{id}",
+    "path_params": [{"name": "id", "type": "string", "required": true}],
+    "query_params": []
+  }
+
+  Endpoint: GET /pets/{id}
+  Raw data: <the chunk content>
+  LLM returns full endpoint dict. After returning, result["method"] and result["path"] are force-overwritten with the ground truth values — the LLM cannot
+  change them. If LLM call throws any exception → falls back to _build_from_structured (deterministic).
+
+  After either path — validate_and_fix(result, ground_truth):
+  1. Force-corrects method and path if LLM changed them anyway
+  2. Ensures every path_param from ground truth exists in input_schema.properties and in required[]
+  3. Adds any query_params the LLM omitted
+  4. Coerces invalid JSON Schema types (e.g. "integer[]" → "string")
+  5. For empty POST/PUT/PATCH schema: falls back to ground_truth.body_schema
+  6. Returns (fixed_endpoint, ValidationReport) — report records every correction made
+
+  Returns ValidationReport: {hint, is_valid, was_auto_fixed, issues[]}. was_auto_fixed=True → ConfidenceAgent will later give that endpoint a lower score.
+
+  session.draft_api is now fully populated. session.coverage_report records how many chunks from the file were matched to generated endpoints (by
+  method+path normalised matching).
+
+  ---
+  Step 6 — ReconciliationAgent
+
+  Runs on the full endpoint list together (SchemaAgent processed them in isolation, so naming inconsistencies can appear across endpoints).
+
+  Pass 1 — deterministic (always runs):
+
+  _deduplicate: removes duplicate (method, path) pairs — keeps first occurrence.
+
+  _align_auth: for each endpoint, if auth_type is empty, None, or "UNKNOWN" → replace with the API-level auth_type.
+
+  _normalise_names: counts how many parameter names across all endpoints use _ (snake_case) vs camelCase (re.search(r"[a-z][A-Z]", name)). If both styles
+  are present, renames all params to the majority convention. _to_snake("userId") → "user_id" via two regex substitutions.
+
+  Pass 2 — LLM (only if ≤ 20 endpoints):
+  Sends all endpoints to _RECONCILE_SYSTEM prompt: "fix naming and auth inconsistencies, return all endpoints unchanged except fixes". After LLM returns,
+  method and path for every endpoint are re-anchored from the originals — LLM cannot reorder or change them.
+
+  ---
+  Step 7 — ConfidenceAgent
+
+  Scores every field so the HITL UI knows what to highlight.
+
+  Meta fields (name, description, base_url, auth_type) → LLM call with _META_SYSTEM:
+  Returns: { "name": {"score": 90, "status": "HIGH", "suggestion": null}, ... }
+
+  Endpoint fields → rule-based _score_endpoints():
+
+  For each endpoint i:
+  - Checks name, path, method, auth_type exist → MISSING if absent
+  - Base score = 85 if ValidationReport.is_valid=True, else 65 (endpoint had hard errors)
+  - input_schema score = 80 if no auto-fixes, 65 if was_auto_fixed=True
+  - output_schema score = 40 (MEDIUM) if properties empty — LLM rarely fills output schemas reliably
+
+  Produces flat dict: {"name": {score, status}, "endpoints.0.name": {score, status}, "endpoints.0.input_schema": {score, status}, ...}
+
+  Pipeline now pauses at HITL_PENDING. Frontend polls GET /api/agent/{id}, renders the form with draft_api fields and highlights low-confidence items. The
+  Import button in DocImportPanel only appears after the user confirms the HITL step.
+
+  ---
+  Step 8 — HITL submission (POST /api/agent/{id}/hitl)
+
+  body: {
+    "edits": { "name": "Fixed Name", "endpoints": [...] },
+    "auth_credentials": { "type": "bearer", "token": "..." },  # optional
+    "save_anyway": false
+  }
+
+  _merge_edits(draft_api, edits):
+  - Shallow merge at top level: draft["name"] = edits["name"]
+  - For endpoints: if the submitted array has no _index keys → full replacement (the HITL form sends the entire array)
+  - Stores session.final_api = merged result
+
+  ---
+  Step 9 — SchemaValidator (post-HITL, no LLM)
+
+  Rule-based checks on session.final_api:
+  - name not blank
+  - base_url not blank, starts with http:// or https://
+  - At least 1 endpoint
+  - Each endpoint: path starts with /, method in {GET,POST,PUT,PATCH,DELETE}, name not blank, auth_type in known set
+
+  If any errors → session.validation_errors = [...], state returns to HITL_PENDING. User sees the error list and resubmits. This is the "HITL loop".
+
+  ---
+  Step 10 — ApiTestAgent
+
+  Only tests GET endpoints with no auth requirement (or with provided credentials). Skips POST/PUT/PATCH/DELETE entirely to avoid side effects.
+
+  _generate_params(input_schema) — fills in realistic test values:
+  - Checks param names against a hint table: latitude → 51.5, city → "London", q → "test", etc.
+  - Falls back to type defaults: string → "test", integer → 1
+  - Only fills in required params
+
+  _substitute_path("/pets/{id}", {"id": "1"}) → "/pets/1", returns remaining params as query string.
+
+  Makes real HTTP GET request with 8s timeout via httpx. Passes response status + body preview to _assess() → LLM determines verdict: PASS / AUTH_REQUIRED /
+   WARNING / UNREACHABLE.
+
+  If save_anyway=False and any endpoint is UNREACHABLE or WARNING → state returns to HITL_PENDING again with api_test_results filled so user can see what
+  failed.
+
+  ---
+  Step 11 — ApiSaver
+
+  Creates permanent DB records:
+
+  ApiDefinition (1 row):
+    id = new uuid
+    name, description, base_url, visibility="PRIVATE"
+    source_session_id = session.id    ← links back to the session
+    user_id = session.user_id
+
+  ApiEndpoint (1 row per endpoint):
+    id = new uuid
+    api_definition_id = definition.id
+    name, description, path, method
+    input_schema = { type:"object", properties:{...}, required:[...] }
+    output_schema = { type:"object", properties:{...} }
+    headers = [...]
+    auth_type = "BEARER"
+    auth_credentials = encrypted JSON    ← only stored if user provided creds
+
+  session.api_definition_id = definition.id. State → "SAVED".
+
+  ---
+  Step 12 — Tool is used in Chat
+
+  POST /api/chatgpt/chat → loads connected ApiDefinition rows → calls api_to_tools(api):
+
+  endpoint_to_tool(api, ep) — the critical translation:
+
+  1. _tool_name(api.id, ep.id) → "t_3ad15e8a_74887862" — takes first 8 chars of each UUID, must be [a-z0-9_] max 64 chars. OpenAI identifies which tool to
+  call by this name.
+  2. _sanitize_schema(ep.input_schema):
+    - Recurses through the schema fixing: array without items → adds items: {type: string}, $ref → replaced with {type: string, description: "(ref: ...)" },
+   coerces child schemas recursively
+    - After fix: if params.get("type") != "object" → replaces entire schema with {type: "object", properties: {}} — OpenAI requires top-level type:
+  "object", anything else (including type: "string") causes a 400 error (which was the bug we just fixed)
+  3. Builds the OpenAI tool dict:
+  {
+    "type": "function",
+    "function": {
+      "name": "t_3ad15e8a_74887862",
+      "description": "Petstore API: Get all pets (max 200 chars)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Max results" }
+        },
+        "required": []
+      }
+    }
+  }
+
+  GPT-4o receives all tools, decides which to call, returns a tool_calls array. The ToolOrchestrator executes them in parallel (retries on network failure),
+   resolve_tool_call("t_3ad15e8a_74887862", db) looks up the ApiEndpoint by the 8-char id prefix, makes the real HTTP call, feeds the result back to GPT-4o.
+   Up to 5 turns of tool-calling before a final text response is returned.

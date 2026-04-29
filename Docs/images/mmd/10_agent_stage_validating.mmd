@@ -1,0 +1,29 @@
+flowchart TD
+    START([state = VALIDATING]) --> R1
+
+    R1{"API has name\nand base_url?"}
+    R1 -->|No| ERR1["error: API name required\nerror: base_url required"]
+    R1 -->|Yes| R2
+
+    R2{"At least\n1 endpoint?"}
+    R2 -->|No| ERR2["error: No endpoints defined"]
+    R2 -->|Yes| R3
+
+    R3{"Each endpoint has\npath and method?"}
+    R3 -->|No| ERR3["error: Endpoint missing path\nerror: Endpoint missing method"]
+    R3 -->|Yes| R4
+
+    R4{"HTTP methods\nvalid?\nGET POST PUT\nPATCH DELETE"}
+    R4 -->|No| ERR4["error: Invalid HTTP method"]
+    R4 -->|Yes| R5
+
+    R5{"input_schema\nvalid JSON Schema?"}
+    R5 -->|No| ERR5["error: Invalid parameter schema"]
+    R5 -->|Yes| PASS
+
+    ERR1 & ERR2 & ERR3 & ERR4 & ERR5 --> COLLECT["Collect all errors"]
+    COLLECT --> FAIL_CHECK{"errors\nlist empty?"}
+    FAIL_CHECK -->|No| LOOP["DB: UPDATE state = HITL_PENDING\nvalidation_errors = list\nUser must fix and resubmit"]
+    FAIL_CHECK -->|Yes| PASS
+
+    PASS["All checks passed"] --> NEXT([API_TESTING])

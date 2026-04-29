@@ -1,0 +1,53 @@
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant Agent as /api/agent
+    participant Orch as Orchestrator
+    participant DB as Database
+    participant LLM as GPT-4o
+
+    User->>FE: Fill form (Chat Builder) OR type message OR upload file
+    FE->>Agent: POST /api/agent/manual OR /chat OR /upload
+    Agent->>DB: INSERT AgentSession {state=INIT, mode, user_id, raw_input}
+    Agent->>Orch: spawn background task: run_pre_hitl(session_id)
+    Agent-->>FE: {id, state=CLASSIFYING} immediate response
+
+    Note over FE: Poll GET /api/agent/{id} every 1.8s
+
+    Orch->>DB: UPDATE state=CLASSIFYING
+    Orch->>Orch: InputClassifier.run() detect CHAT/DOC/MANUAL
+    Orch->>DB: UPDATE state=PARSING
+    Orch->>Orch: ParsingAgent.run() extract raw endpoints
+    Orch->>DB: UPDATE state=SCHEMA_GENERATING, extracted_schema saved
+    Orch->>LLM: SchemaAgent prompt → OpenAPI-compatible JSON
+    LLM-->>Orch: {name, base_url, version, auth_type, endpoints[]}
+    Orch->>DB: UPDATE state=CONFIDENCE_SCORING, draft_api saved
+    Orch->>LLM: ConfidenceAgent prompt → score each field
+    LLM-->>Orch: {confidence_map: {field: HIGH|MEDIUM|LOW|MISSING}}
+    Orch->>DB: UPDATE state=HITL_PENDING, confidence_map saved
+
+    FE->>Agent: GET /api/agent/{id}
+    DB-->>FE: {state=HITL_PENDING, draft_api, confidence_map}
+    FE-->>User: Show editor with confidence dots GREEN AMBER RED
+
+    User->>FE: Review, edit fields, set auth credentials, click Save
+    FE->>Agent: POST /api/agent/{id}/hitl {edits, auth_credentials}
+    Agent->>Agent: encrypt_creds(auth_credentials)
+    Agent->>DB: UPDATE session (human_edits, auth_credentials encrypted)
+    Agent->>Orch: spawn background task: run_post_hitl(session_id)
+    Agent-->>FE: {state=VALIDATING}
+
+    Orch->>Orch: merge(draft_api, human_edits) → final_api
+    Orch->>Orch: SchemaValidator.run() rule checks
+
+    alt Validation fails
+        Orch->>DB: UPDATE state=HITL_PENDING, validation_errors=[...]
+        FE-->>User: Show errors, user must fix
+    else Validation passes
+        Orch->>DB: UPDATE state=API_TESTING
+        Orch->>Orch: ApiTestAgent.run() HTTP call each endpoint
+        Orch->>DB: UPDATE state=SAVING, api_test_results saved
+        Orch->>DB: INSERT ApiDefinition + ApiEndpoint rows
+        Orch->>DB: UPDATE session (state=SAVED, api_definition_id)
+        FE-->>User: Success panel — API created
+    end

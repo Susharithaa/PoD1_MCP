@@ -1,0 +1,70 @@
+graph TB
+    subgraph CLIENT["Frontend — React + Vite (localhost:5173)"]
+        direction TB
+        AUTH_PAGES["Auth Pages\n/login · /register"]
+        CREATE_PAGES["Create Pages\n/create/chat · /create/upload"]
+        HITL_PAGE["HITL Validator\n/validate/:id"]
+        REGISTRY_PAGE["Registry\n/registry"]
+        CHAT_PAGE["ChatGPT Tools\n/chatgpt"]
+        MONITOR_PAGE["Monitor\n/monitor"]
+        ADMIN_PAGE["Admin\n/admin"]
+        API_CLIENT["lib/api.js — Axios + JWT interceptor"]
+        AUTH_CTX["AuthContext — JWT · user · role"]
+        LANG_CTX["LanguageContext — EN / JA i18n"]
+    end
+
+    subgraph BACKEND["Backend — FastAPI (localhost:8000)"]
+        direction TB
+        MW["Middleware: CORS · SlowAPI Rate Limiter · JWT Guard"]
+
+        subgraph ROUTERS["Routers"]
+            R_AUTH["/api/auth\nregister · login · me · admin CRUD"]
+            R_AGENT["/api/agent\nchat · upload · manual · hitl · confirm · list"]
+            R_REG["/api/registry\nlist · get · delete"]
+            R_CGPT["/api/chatgpt\nstats · registry · connect · disconnect · chat"]
+            R_MON["/api/monitor\noverview · active · sessions · tool-calls"]
+        end
+
+        subgraph AGENTS["Agent Pipeline (Orchestrator)"]
+            direction LR
+            A1["① CLASSIFYING\nInputClassifier"]
+            A2["② PARSING\nParsingAgent"]
+            A3["③ SCHEMA_GEN\nSchemaAgent"]
+            A4["④ CONFIDENCE\nConfidenceAgent"]
+            A5["⑤ HITL_PENDING\nhuman edits"]
+            A6["⑥ VALIDATING\nSchemaValidator"]
+            A7["⑦ API_TESTING\nApiTestAgent"]
+            A8["⑧ SAVING\nApiSaver"]
+            A1-->A2-->A3-->A4-->A5-->A6-->A7-->A8
+        end
+
+        subgraph UTILS["Utilities"]
+            ENC["encryption.py\nFernet + SHA-256"]
+            AUTH_U["auth.py\nJWT · bcrypt · require_admin"]
+            LIMITER["limiter.py\nSlowAPI"]
+            TRANS["openai_translator.py\napi_to_tools · resolve_tool_call"]
+        end
+    end
+
+    subgraph EXTERNAL["External Services"]
+        OPENAI["OpenAI API\nGPT-4o\nSchema Gen · Confidence · Agentic Chat"]
+        EXT_API["External APIs\ntool execution targets"]
+    end
+
+    subgraph DB["PostgreSQL / SQLite"]
+        T1["users"]
+        T2["agent_sessions"]
+        T3["api_definitions"]
+        T4["api_endpoints"]
+        T5["chatgpt_connections"]
+        T6["tool_call_logs"]
+    end
+
+    API_CLIENT -->|HTTP + Bearer token| MW
+    MW --> R_AUTH & R_AGENT & R_REG & R_CGPT & R_MON
+    R_AGENT --> AGENTS
+    AGENTS --> OPENAI
+    R_CGPT --> OPENAI
+    R_CGPT --> EXT_API
+    ROUTERS --> DB
+    AGENTS --> DB
