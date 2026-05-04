@@ -107,6 +107,7 @@ export const monitorApi = {
   active:     () => http.get("/api/monitor/active").then(r => r.data),
   sessions:   (limit = 30) => http.get(`/api/monitor/sessions?limit=${limit}`).then(r => r.data),
   toolCalls:  (limit = 30) => http.get(`/api/monitor/tool-calls?limit=${limit}`).then(r => r.data),
+  audit:      (limit = 50) => http.get(`/api/monitor/audit?limit=${limit}`).then(r => r.data),
   pipeline:   () => http.get("/api/monitor/pipeline").then(r => r.data),
 };
 
@@ -125,6 +126,8 @@ export const chatgptApi = {
   getRegistry: ()      => http.get("/api/chatgpt/registry").then((r) => r.data),
   connect:     (id)    => http.post(`/api/chatgpt/connect/${id}`).then((r) => r.data),
   disconnect:  (id)    => http.delete(`/api/chatgpt/disconnect/${id}`).then((r) => r.data),
+  getSession:  (id)    => http.get(`/api/chatgpt/session/${id}`).then((r) => r.data),
+  clearSession:(id)    => http.delete(`/api/chatgpt/session/${id}`).then((r) => r.data),
   getTools:    (id)    => http.get(`/api/chatgpt/tools/${id}`).then((r) => r.data),
   chat:        (message, api_ids = [], session_id = null, dry_run = false) =>
     http.post("/api/chatgpt/chat", { message, api_ids, session_id, dry_run }).then((r) => r.data),

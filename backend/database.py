@@ -44,7 +44,7 @@ def get_db():
 
 
 def init_db():
-    from models import agent_session, api_definition, auth_config, chatgpt_connection, user, token_usage, operational  # noqa: F401
+    from models import agent_session, api_definition, auth_config, chatgpt_connection, chat_audit, user, token_usage, operational  # noqa: F401
     Base.metadata.create_all(bind=engine)
     _migrate()
 

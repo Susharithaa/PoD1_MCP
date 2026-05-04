@@ -154,6 +154,15 @@ export default function ChatBuilder() {
         </p>
       </div>
 
+      <div className="card p-4 mb-4">
+        <p className="eyebrow">Sample API</p>
+        <p className="text-sm text-[var(--muted)] mt-2">
+          Run the demo FastAPI app in <span className="font-mono">testing/sample_fastapi_app.py</span> with
+          <span className="font-mono"> uvicorn testing.sample_fastapi_app:app --reload --port 9001</span>,
+          then use <span className="font-mono">http://localhost:9001</span> as the Base URL and add the sample endpoints.
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* ── Overview ── */}

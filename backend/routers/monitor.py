@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -7,6 +8,7 @@ from database import get_db
 from models.agent_session import AgentSession
 from models.api_definition import ApiDefinition
 from models.chatgpt_connection import ChatGPTConnection, ToolCallLog
+from models.chat_audit import ChatAuditLog
 from utils.auth import get_current_user
 from models.user import User
 
@@ -49,6 +51,41 @@ def _elapsed(dt: datetime) -> int:
     return max(0, int((_now() - dt).total_seconds()))
 
 
+def _visible_sessions_query(db: Session, current_user: User):
+    query = db.query(AgentSession)
+    if current_user.role != "admin":
+        query = query.filter(AgentSession.user_id == current_user.id)
+    return query
+
+
+def _visible_api_ids(db: Session, current_user: User):
+    query = db.query(ApiDefinition.id)
+    if current_user.role != "admin":
+        query = query.filter(ApiDefinition.user_id == current_user.id)
+    return [a.id for a in query.all()]
+
+
+def _session_actor(session_user: User | None) -> tuple[str, str]:
+    if not session_user:
+        return "—", "—"
+    return session_user.email or "—", session_user.full_name or session_user.email or "—"
+
+
+def _session_prompt(session: AgentSession) -> tuple[str, str]:
+    raw = (session.raw_input or "").strip()
+    if session.mode == "DOC":
+        if session.file_path:
+            return f"Uploaded file: {Path(session.file_path).name}", raw or session.file_path or "—"
+        if raw:
+            return f"Uploaded file: {Path(raw).name}", raw
+        return "Uploaded file", "—"
+    if raw:
+        if raw.startswith("Manual form:"):
+            return raw, raw
+        return raw, raw
+    return "—", "—"
+
+
 # ── Overview stats ────────────────────────────────────────────────────────────
 
 @router.get("/overview")
@@ -58,36 +95,30 @@ def overview(
 ):
     today = _now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    total    = db.query(AgentSession).filter(AgentSession.user_id == current_user.id).count()
-    active   = db.query(AgentSession).filter(
-        AgentSession.user_id == current_user.id,
+    session_query = _visible_sessions_query(db, current_user)
+    total    = session_query.count()
+    active   = session_query.filter(
         AgentSession.state.in_(ACTIVE_STATES),
     ).count()
-    today_n  = db.query(AgentSession).filter(
-        AgentSession.user_id == current_user.id,
+    today_n  = session_query.filter(
         AgentSession.created_at >= today,
     ).count()
-    saved    = db.query(AgentSession).filter(
-        AgentSession.user_id == current_user.id,
+    saved    = session_query.filter(
         AgentSession.state == "SAVED",
     ).count()
-    failed   = db.query(AgentSession).filter(
-        AgentSession.user_id == current_user.id,
+    failed   = session_query.filter(
         AgentSession.state == "FAILED",
     ).count()
-    pending  = db.query(AgentSession).filter(
-        AgentSession.user_id == current_user.id,
+    pending  = session_query.filter(
         AgentSession.state == "HITL_PENDING",
     ).count()
 
-    user_api_ids = [
-        a.id for a in db.query(ApiDefinition.id).filter(ApiDefinition.user_id == current_user.id).all()
-    ]
+    user_api_ids = _visible_api_ids(db, current_user)
     total_apis     = len(user_api_ids)
-    connected_apis = db.query(ChatGPTConnection).filter(
-        ChatGPTConnection.user_id == current_user.id,
-        ChatGPTConnection.is_active == True,
-    ).count()
+    connection_query = db.query(ChatGPTConnection)
+    if current_user.role != "admin":
+        connection_query = connection_query.filter(ChatGPTConnection.user_id == current_user.id)
+    connected_apis = connection_query.filter(ChatGPTConnection.is_active == True).count()
     total_calls    = db.query(ToolCallLog).filter(ToolCallLog.api_definition_id.in_(user_api_ids)).count()
     calls_today    = db.query(ToolCallLog).filter(
         ToolCallLog.api_definition_id.in_(user_api_ids),
@@ -120,25 +151,27 @@ def active_sessions(
     current_user: User = Depends(get_current_user),
 ):
     rows = (
-        db.query(AgentSession)
+        db.query(AgentSession, User)
+        .outerjoin(User, User.id == AgentSession.user_id)
         .filter(
-            AgentSession.user_id == current_user.id,
             AgentSession.state.in_(ACTIVE_STATES),
         )
-        .order_by(desc(AgentSession.updated_at))
-        .limit(10)
-        .all()
     )
+    if current_user.role != "admin":
+        rows = rows.filter(AgentSession.user_id == current_user.id)
+    rows = rows.order_by(desc(AgentSession.updated_at)).limit(10).all()
     return [
         {
             "id":              s.id,
             "mode":            s.mode or "UNKNOWN",
             "state":           s.state,
             "api_name":        _api_name(s),
+            "user_email":      user.email or "—",
+            "user_name":       user.full_name or user.email or "—",
             "elapsed_seconds": _elapsed(s.created_at),
             "updated_seconds": _elapsed(s.updated_at),
         }
-        for s in rows
+        for s, user in rows
     ]
 
 
@@ -151,8 +184,13 @@ def recent_sessions(
     current_user: User = Depends(get_current_user),
 ):
     rows = (
-        db.query(AgentSession)
-        .filter(AgentSession.user_id == current_user.id)
+        db.query(AgentSession, User)
+        .outerjoin(User, User.id == AgentSession.user_id)
+    )
+    if current_user.role != "admin":
+        rows = rows.filter(AgentSession.user_id == current_user.id)
+    rows = (
+        rows
         .order_by(desc(AgentSession.created_at))
         .limit(limit)
         .all()
@@ -164,11 +202,15 @@ def recent_sessions(
             "state":        s.state,
             "api_name":     _api_name(s),
             "test_verdict": _test_summary(s.api_test_results),
+            "user_email":   user.email or "—",
+            "user_name":    user.full_name or user.email or "—",
+            "prompt":       _session_prompt(s)[0],
+            "raw_input":    _session_prompt(s)[1][:180],
             "created_at":   s.created_at.isoformat(),
             "duration_ms":  int((s.updated_at - s.created_at).total_seconds() * 1000),
             "error":        (s.error_log or [{}])[-1].get("error") if s.state == "FAILED" else None,
         }
-        for s in rows
+        for s, user in rows
     ]
 
 
@@ -180,9 +222,7 @@ def tool_call_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    user_api_ids = [
-        a.id for a in db.query(ApiDefinition.id).filter(ApiDefinition.user_id == current_user.id).all()
-    ]
+    user_api_ids = _visible_api_ids(db, current_user)
     rows = (
         db.query(ToolCallLog, ApiDefinition)
         .join(ApiDefinition, ToolCallLog.api_definition_id == ApiDefinition.id, isouter=True)
@@ -220,3 +260,28 @@ def pipeline_stats(
         .all()
     )
     return {state: count for state, count in rows}
+
+
+@router.get("/audit")
+def audit_trail(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = db.query(ChatAuditLog).order_by(desc(ChatAuditLog.created_at)).limit(limit).all()
+    if current_user.role != "admin":
+        rows = [r for r in rows if r.user_id == current_user.id]
+    return [
+        {
+            "id": r.id,
+            "session_id": r.session_id,
+            "user_email": r.user_email or "—",
+            "user_name": r.user_name or r.user_email or "—",
+            "message": r.message,
+            "response": r.response or "—",
+            "model": r.model or "—",
+            "status": r.status or "—",
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in rows
+    ]

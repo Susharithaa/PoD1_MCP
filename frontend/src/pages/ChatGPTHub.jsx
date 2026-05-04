@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { chatgptApi, subscriptionApi } from "../lib/api";
+import { chatgptApi, subscriptionApi, monitorApi, registryApi } from "../lib/api";
 import { PageSpinner } from "../components/Spinner";
 import Spinner from "../components/Spinner";
 import { useLanguage } from "../context/LanguageContext";
@@ -26,14 +26,20 @@ export default function ChatGPTHub() {
   const [expanded,      setExpanded]      = useState(false);
   const [activeSession, setActiveSession] = useState(null);
   const [requesting,    setRequesting]    = useState(false);
+  const [recentSessions, setRecentSessions] = useState([]);
 
   const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    const loads = [chatgptApi.getStats(), chatgptApi.getRegistry()];
+    const loads = [chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)];
     if (!isAdmin) loads.push(subscriptionApi.getStatus());
     Promise.all(loads)
-      .then(([s, a, sub]) => { setStats(s); setApis(a); if (sub) setSubStatus(sub); })
+      .then(([s, a, recent, sub]) => {
+        setStats(s);
+        setApis(a);
+        setRecentSessions(recent || []);
+        if (sub) setSubStatus(sub);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -58,10 +64,26 @@ export default function ChatGPTHub() {
       } else {
         await chatgptApi.connect(api.id);
       }
-      const [s, a] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry()]);
-      setStats(s); setApis(a);
+      const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)]);
+      setStats(s);
+      setApis(a);
+      setRecentSessions(recent || []);
     } finally {
       setToggling(null);
+    }
+  }
+
+  async function removeApi(api) {
+    if (!confirm(`Delete "${api.name}" and all its endpoints?`)) return;
+    try {
+      await registryApi.delete(api.id);
+      const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)]);
+      setStats(s);
+      setApis(a);
+      setRecentSessions(recent || []);
+      if (activeSession && !recent?.some(r => r.id === activeSession)) setActiveSession(null);
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to delete API.");
     }
   }
 
@@ -181,10 +203,56 @@ export default function ChatGPTHub() {
             <div className="space-y-2 pb-2">
               {filtered.map(api => (
                 <ApiRow key={api.id} api={api} toggling={toggling === api.id}
-                  onToggle={() => toggle(api)} t={t} />
+                  onToggle={() => toggle(api)} onDelete={() => removeApi(api)} t={t} />
               ))}
             </div>
           )}
+
+          <div className="mt-5 card overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Chat History</p>
+                <p className="text-xs text-zinc-600 mt-1">Recent sessions and prompts</p>
+              </div>
+              <span className="text-[10px] text-zinc-500">{recentSessions.length} logs</span>
+            </div>
+            <div className="max-h-[320px] overflow-y-auto divide-y divide-zinc-800">
+              {recentSessions.length === 0 ? (
+                <div className="px-4 py-4 text-xs text-zinc-500">No chat sessions yet.</div>
+              ) : (
+                recentSessions.map(session => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => setActiveSession(session.id)}
+                    className={`w-full text-left px-4 py-3 transition-colors hover:bg-zinc-900/60 ${activeSession === session.id ? "bg-emerald-500/5" : ""}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-zinc-100 truncate">{session.api_name}</p>
+                        <p className="text-[11px] text-zinc-500 truncate">
+                          {session.user_name} · {session.user_email}
+                        </p>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 whitespace-nowrap">
+                        {session.state}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-2 line-clamp-2">
+                      {session.raw_input || "No prompt captured"}
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-2 line-clamp-2">
+                      {session.response || "No response captured"}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-600">
+                      <span>{session.test_verdict}</span>
+                      <span>{session.created_time || fmtSessionAge(session.created_at)}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right — Chat panel, sticky so it never scrolls off screen */}
@@ -205,7 +273,7 @@ export default function ChatGPTHub() {
 }
 
 /* ── API row ── */
-function ApiRow({ api, toggling, onToggle, t }) {
+function ApiRow({ api, toggling, onToggle, onDelete, t }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className={`card transition-all ${api.is_connected
@@ -242,6 +310,14 @@ function ApiRow({ api, toggling, onToggle, t }) {
             {toggling ? <Spinner size={11} /> : api.is_connected ? <UnplugIcon /> : <PlugSmIcon />}
             {api.is_connected ? t("Connected") : t("Connect")}
           </button>
+          <button
+            onClick={onDelete}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium
+                       bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/15"
+          >
+            <TrashIcon />
+            {t("Delete")}
+          </button>
         </div>
       </div>
       {expanded && api.tools?.length > 0 && (
@@ -265,12 +341,35 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
   const [messages, setMessages] = useState([]);
   const [input,    setInput]    = useState("");
   const [sending,  setSending]  = useState(false);
+  const [loadingSession, setLoadingSession] = useState(false);
   const bottomRef  = useRef(null);
   const inputRef   = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    if (!activeSession) {
+      setMessages([]);
+      return;
+    }
+
+    setLoadingSession(true);
+    chatgptApi.getSession(activeSession)
+      .then(info => {
+        const transcript = Array.isArray(info?.history) ? info.history : [];
+        setMessages(transcript.map(normalizeMessage));
+      })
+      .catch(() => {
+        setMessages([{
+          role: "error",
+          content: "Unable to load this chat history.",
+          ts: now(),
+        }]);
+      })
+      .finally(() => setLoadingSession(false));
+  }, [activeSession]);
 
   async function send() {
     const text = input.trim();
@@ -316,6 +415,7 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
           ts: now(),
         }]);
         onStatsRefresh();
+        monitorApi.sessions(8).then(setRecentSessions).catch(() => {});
       }
     } catch (err) {
       setMessages(m => [...m, {
@@ -367,7 +467,10 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
-        {messages.length === 0 && (
+        {loadingSession && (
+          <div className="text-sm text-zinc-500">Loading chat history…</div>
+        )}
+        {!loadingSession && messages.length === 0 && (
           <EmptyState noTools={noTools} toolNames={toolNames} t={t} />
         )}
 
@@ -761,3 +864,43 @@ function ChevronSmIcon({ open }) { return <svg width="11" height="11" viewBox="0
 function ExpandIcon()   { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M9 1h5v5M6 9l8-8M1 6V1h5M6 9L1 14M9 14h5v-5M9 6l5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
 function ShrinkIcon()   { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M9 6V1M9 6h5M6 9H1M6 9v5M14 1l-5 5M1 14l5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
 function CreditIcon()   { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><rect x="1" y="3.5" width="13" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M1 6.5h13" stroke="currentColor" strokeWidth="1.4"/><path d="M4 9.5h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
+function TrashIcon()    { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M3 3.5h9M5.5 3.5V2.5h4v1M6 6v5M9 6v5M4 3.5l.5 9h6l.5-9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
+
+function fmtSessionAge(iso) {
+  const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  return `${Math.floor(secs / 3600)}h ago`;
+}
+
+function normalizeMessage(msg) {
+  if (!msg || typeof msg !== "object") {
+    return { role: "system", type: "no_tools", ts: now() };
+  }
+
+  const ts = msg.ts ? Date.parse(msg.ts) : now();
+  if (msg.role === "assistant") {
+    return {
+      role: "assistant",
+      content: msg.content || "",
+      tool_calls: msg.tool_calls || [],
+      model: msg.model,
+      ts,
+    };
+  }
+  if (msg.role === "tool") {
+    return {
+      role: "tool",
+      tool_call_id: msg.tool_call_id,
+      content: msg.content || "",
+      ts,
+    };
+  }
+  if (msg.role === "error") {
+    return { role: "error", content: msg.content || "Error", ts };
+  }
+  if (msg.role === "system" && msg.type) {
+    return { role: "system", type: msg.type, available_tools: msg.available_tools || [], query: msg.query, ts };
+  }
+  return { role: "user", content: msg.content || "", ts };
+}

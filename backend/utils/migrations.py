@@ -1,14 +1,21 @@
 import logging
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
+try:
+    from alembic import command
+    from alembic.config import Config
+except Exception:  # pragma: no cover - fallback when Alembic is unavailable in tests
+    command = None
+    Config = None
 
 from config import settings
 
 
 def run_server_migrations() -> None:
     if not settings.run_migrations_on_startup:
+        return
+    if command is None or Config is None:
+        logging.getLogger(__name__).warning("Alembic unavailable; skipping startup migrations.")
         return
     if settings.database_url.startswith("sqlite"):
         logging.getLogger(__name__).info(

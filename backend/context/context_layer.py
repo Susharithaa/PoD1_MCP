@@ -100,6 +100,7 @@ class ContextLayer:
             "turns": len([m for m in s.history if m["role"] == "user"]),
             "created_at": s.created_at.isoformat(),
             "last_active": s.last_active.isoformat(),
+            "history": s.history,
         }
 
     # ── Internal ──────────────────────────────────────────────────────────────

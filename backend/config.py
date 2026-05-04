@@ -32,6 +32,11 @@ def _env_files_for_settings() -> tuple[Path, ...]:
 
 class Settings(BaseSettings):
     openai_api_key: str = "mock"
+    azure_openai_api_key: str = ""
+    azure_openai_endpoint: str = ""
+    azure_openai_base_url: str = ""
+    azure_openai_api_version: str = "2024-02-15-preview"
+    azure_openai_deployment: str = ""
     mock_llm: bool = False
     database_url: str = "sqlite:///./mcp_hub.db"
     upload_dir: str = "./uploads"
@@ -90,6 +95,14 @@ class Settings(BaseSettings):
     @property
     def admin_bootstrap_emails_list(self) -> list[str]:
         return [email.strip().lower() for email in self.admin_bootstrap_emails.split(",") if email.strip()]
+
+    @property
+    def has_azure_openai(self) -> bool:
+        return bool(self.azure_openai_api_key.strip() and self.azure_openai_host.strip() and self.azure_openai_deployment.strip())
+
+    @property
+    def azure_openai_host(self) -> str:
+        return (self.azure_openai_endpoint or self.azure_openai_base_url or "").strip().rstrip("/")
 
 
 settings = Settings()

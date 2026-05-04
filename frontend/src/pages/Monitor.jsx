@@ -11,6 +11,7 @@ export default function Monitor() {
   const [active, setActive] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [toolCalls, setToolCalls] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -107,26 +108,57 @@ export default function Monitor() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-[var(--line)] bg-[var(--panel)]">
-                {["Session ID", "Mode", "State", "API Name", "Duration", "Created"].map(h => (
+                {["Session ID", "Login", "Mode", "State", "API Name", "Prompt", "Duration", "Created"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left font-semibold text-[10px] uppercase tracking-[0.18em] text-[var(--muted-2)] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
               {sessions.map(s => (
-                <tr key={s.id} className="hover:bg-[var(--hover)]">
+                <tr key={s.id} className="hover:bg-[var(--hover)] cursor-pointer" onClick={() => setSelectedSession(s)}>
                   <td className="px-4 py-3 font-mono text-[var(--muted)]">{s.id.slice(0, 8)}…</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-[var(--ink)] truncate max-w-[220px]">{s.user_name}</span>
+                      <span className="text-[10px] text-[var(--muted)] truncate max-w-[220px]">{s.user_email}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{s.mode}</td>
                   <td className="px-4 py-3">{s.state}</td>
                   <td className="px-4 py-3 font-medium max-w-[180px] truncate">{s.api_name}</td>
+                  <td className="px-4 py-3 max-w-[260px] truncate text-[var(--muted)]">{s.prompt || "—"}</td>
                   <td className="px-4 py-3">{fmtDuration(s.duration_ms)}</td>
-                  <td className="px-4 py-3 text-[var(--muted)] whitespace-nowrap">{timeAgo(s.created_at)}</td>
+                  <td className="px-4 py-3 text-[var(--muted)] whitespace-nowrap">{s.created_time || timeAgo(s.created_at)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {selectedSession && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="eyebrow">Selected Session</p>
+              <p className="text-sm text-[var(--muted)] mt-1">{selectedSession.user_name} · {selectedSession.created_time}</p>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedSession(null)}>
+              Clear
+            </button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted-2)] mb-2">Prompt</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{selectedSession.message || selectedSession.prompt || "—"}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted-2)] mb-2">Response</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{selectedSession.response || "—"}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
