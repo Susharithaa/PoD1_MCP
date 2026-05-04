@@ -124,6 +124,42 @@ def github_callback(code: str | None = None, error: str | None = None,
     return RedirectResponse(f"{settings.frontend_url}/auth/callback?token={jwt}")
 
 
+def _generic_oauth_login(provider: str, auth_url: str, client_id: str, redirect_uri: str):
+    if not auth_url or not client_id:
+        raise HTTPException(501, f"{provider} OAuth2 not configured")
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+    }
+    return RedirectResponse(f"{auth_url}?{urlencode(params)}")
+
+
+@router.get("/okta")
+def okta_login():
+    return _generic_oauth_login("Okta", settings.okta_authorize_url, settings.okta_client_id, settings.okta_redirect_uri)
+
+
+@router.get("/sso")
+def sso_login():
+    return _generic_oauth_login("SSO", settings.sso_authorize_url, settings.sso_client_id, settings.sso_redirect_uri)
+
+
+@router.get("/okta/callback")
+def okta_callback(code: str | None = None, error: str | None = None):
+    if error or not code:
+        return RedirectResponse(f"{settings.frontend_url}/login?error=okta_denied")
+    return RedirectResponse(f"{settings.frontend_url}/login?error=okta_token_exchange_not_configured")
+
+
+@router.get("/sso/callback")
+def sso_callback(code: str | None = None, error: str | None = None):
+    if error or not code:
+        return RedirectResponse(f"{settings.frontend_url}/login?error=sso_denied")
+    return RedirectResponse(f"{settings.frontend_url}/login?error=sso_token_exchange_not_configured")
+
+
 def _exchange_github_code(code: str) -> str:
     resp = httpx.post(_GH_TOKEN_URL, data={
         "code":          code,

@@ -21,6 +21,7 @@ import models.agent_session   # noqa: F401
 import models.api_definition  # noqa: F401
 import models.auth_config     # noqa: F401
 import models.chatgpt_connection  # noqa: F401
+import models.operational  # noqa: F401
 
 target_metadata = Base.metadata
 

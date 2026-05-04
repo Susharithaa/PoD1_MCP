@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -21,10 +22,13 @@ from sqlalchemy.orm import Session
 from models.api_definition import ApiDefinition, ApiEndpoint
 from translators.openai_translator import resolve_tool_call
 from utils.encryption import decrypt_creds
+from utils.masking import mask_sensitive
+from utils.ssrf import validate_outbound_url
+from utils.safety import is_dry_run_enabled, is_emergency_stop_enabled, max_tool_execution_ms
 
-MAX_RETRIES     = 2
+MAX_RETRIES     = 0
 RETRY_DELAY_S   = 0.5   # base delay; doubles each attempt
-TOOL_TIMEOUT_S  = 15.0
+TOOL_TIMEOUT_S  = 5.0
 
 
 @dataclass
@@ -50,17 +54,18 @@ class ToolOrchestrator:
         self,
         tool_calls: list,
         db: Session,
+        dry_run: bool = False,
     ) -> list[ExecutionResult]:
         """
         Dispatch all tool_calls from a single GPT-4o response in parallel.
         Returns one ExecutionResult per tool_call, in original order.
         """
-        tasks = [self._execute_one(tc, db) for tc in tool_calls]
+        tasks = [self._execute_one(tc, db, dry_run=dry_run) for tc in tool_calls]
         return list(await asyncio.gather(*tasks))
 
     # ── Internal ─────────────────────────────────────────────────────────────
 
-    async def _execute_one(self, tc: Any, db: Session) -> ExecutionResult:
+    async def _execute_one(self, tc: Any, db: Session, dry_run: bool = False) -> ExecutionResult:
         tool_name = tc.function.name
         try:
             args = json.loads(tc.function.arguments)
@@ -93,6 +98,35 @@ class ToolOrchestrator:
                 arguments=args,
                 result_text=_missing_params_message(ep_obj, missing),
                 success=False,
+                skipped=True,
+            )
+
+        if is_emergency_stop_enabled():
+            return ExecutionResult(
+                tool_call_id=tc.id,
+                tool_name=tool_name,
+                api_name=api_obj.name,
+                endpoint=ep_obj.name or ep_obj.path,
+                arguments=args,
+                result_text=json.dumps({"status": "EMERGENCY_STOP", "message": "Tool execution is disabled by emergency stop."}),
+                success=False,
+                skipped=True,
+            )
+
+        if dry_run or is_dry_run_enabled():
+            return ExecutionResult(
+                tool_call_id=tc.id,
+                tool_name=tool_name,
+                api_name=api_obj.name,
+                endpoint=ep_obj.name or ep_obj.path,
+                arguments=args,
+                result_text=json.dumps({
+                    "status": "DRY_RUN",
+                    "method": ep_obj.method,
+                    "url": f"{api_obj.base_url.rstrip('/')}{ep_obj.path}" if api_obj.base_url else ep_obj.path,
+                    "arguments": args,
+                }),
+                success=True,
                 skipped=True,
             )
 
@@ -138,7 +172,12 @@ async def _http_call(
     if not api.base_url:
         return "Error: API has no base_url configured", False
 
+    started = time.perf_counter()
     url  = f"{api.base_url.rstrip('/')}{ep.path}"
+    try:
+        validate_outbound_url(url)
+    except ValueError as exc:
+        return f"Blocked outbound request: {exc}", False
     args = dict(arguments)
 
     for param in re.findall(r"\{(\w+)\}", ep.path):
@@ -152,13 +191,18 @@ async def _http_call(
     try:
         async with httpx.AsyncClient(timeout=TOOL_TIMEOUT_S, verify=False) as client:
             method = ep.method.upper()
+            budget_seconds = max_tool_execution_ms() / 1000
+            timeout = min(TOOL_TIMEOUT_S, budget_seconds)
             if method == "GET":
-                resp = await client.get(url, params=args, auth=req_auth, headers=extra_headers)
+                resp = await client.get(url, params=args, auth=req_auth, headers=extra_headers, timeout=timeout)
             elif method == "DELETE":
-                resp = await client.delete(url, params=args, auth=req_auth, headers=extra_headers)
+                resp = await client.delete(url, params=args, auth=req_auth, headers=extra_headers, timeout=timeout)
             else:
-                resp = await client.request(method, url, json=args, auth=req_auth, headers=extra_headers)
-        return resp.text[:2000], resp.status_code < 400
+                resp = await client.request(method, url, json=args, auth=req_auth, headers=extra_headers, timeout=timeout)
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        if duration_ms > max_tool_execution_ms():
+            return json.dumps({"status": "SLA_BREACH", "duration_ms": duration_ms, "budget_ms": max_tool_execution_ms()}), False
+        return str(mask_sensitive(resp.text[:2000])), resp.status_code < 400
     except Exception as exc:
         return f"Request failed: {exc}", False
 

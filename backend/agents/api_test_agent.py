@@ -23,6 +23,8 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 from agents.base import BaseAgent
 from utils.encryption import decrypt_creds
+from utils.masking import mask_sensitive
+from utils.ssrf import validate_outbound_url
 from models.agent_session import AgentSession
 from llm.client import chat_json
 
@@ -167,6 +169,13 @@ class ApiTestAgent(BaseAgent):
         params = _generate_params(ep.get("input_schema"))
         resolved_path, query_params = _substitute_path(path, params)
         url = f"{base_url}{resolved_path}"
+        try:
+            validate_outbound_url(url)
+        except ValueError as exc:
+            base["verdict"] = "UNREACHABLE"
+            base["assessment"] = f"Blocked by SSRF protection: {exc}"
+            base["error"] = str(exc)
+            return base
 
         base["url_tested"]  = url + (f"?{_qs(query_params)}" if query_params else "")
         base["test_params"] = params
@@ -183,7 +192,7 @@ class ApiTestAgent(BaseAgent):
                     auth=req_auth, headers=extra_headers,
                 )
             duration = int((time.monotonic() - t0) * 1000)
-            preview  = resp.text[:500]
+            preview  = str(mask_sensitive(resp.text[:500]))
 
             base["status_code"]      = resp.status_code
             base["response_preview"] = preview

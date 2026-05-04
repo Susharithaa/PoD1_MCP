@@ -25,6 +25,7 @@ const NAV_SECTIONS = [
     headingKey: "Integrations",
     items: [
       { to: "/chatgpt", labelKey: "ChatGPT Tools", icon: SparkleIcon },
+      { to: "/expenses", labelKey: "Expenses", icon: ReceiptIcon },
     ],
   },
   {
@@ -357,6 +358,14 @@ function SparkleIcon() {
       <path d="M7.5 1.5v2M7.5 11.5v2M1.5 7.5h2M11.5 7.5h2M3.4 3.4l1.4 1.4M10.2 10.2l1.4 1.4M3.4 11.6l1.4-1.4M10.2 4.8l1.4-1.4"
         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
       <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+    </svg>
+  );
+}
+function ReceiptIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0">
+      <path d="M3 1.5h9v12l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1v-12Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M5 5h5M5 7.5h5M5 10h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   );
 }

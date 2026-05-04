@@ -1,3 +1,4 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from config import settings
@@ -5,12 +6,24 @@ from config import settings
 
 def _make_engine():
     url = settings.database_url
-    kwargs: dict = {"echo": False}
+    if url == "sqlite:///./mcp_hub.db" and os.getenv("MCP_HUB_CONTAINER"):
+        os.makedirs(settings.data_dir, exist_ok=True)
+        url = f"sqlite:///{os.path.join(settings.data_dir, 'mcp_hub.db')}"
+    kwargs: dict = {
+        "echo": False,
+        "pool_pre_ping": True,
+    }
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
         if ":memory:" in url:
             from sqlalchemy.pool import StaticPool
             kwargs["poolclass"] = StaticPool
+    else:
+        kwargs.update({
+            "pool_size": settings.db_pool_size,
+            "max_overflow": settings.db_max_overflow,
+            "pool_recycle": settings.db_pool_recycle_seconds,
+        })
     return create_engine(url, **kwargs)
 
 
@@ -31,7 +44,7 @@ def get_db():
 
 
 def init_db():
-    from models import agent_session, api_definition, auth_config, chatgpt_connection, user, token_usage  # noqa: F401
+    from models import agent_session, api_definition, auth_config, chatgpt_connection, user, token_usage, operational  # noqa: F401
     Base.metadata.create_all(bind=engine)
     _migrate()
 
@@ -85,3 +98,8 @@ def _migrate():
         conn_cols = {c["name"] for c in inspector.get_columns("chatgpt_connections")}
         if "user_id" not in conn_cols:
             _add_col("chatgpt_connections", "user_id", "TEXT")
+
+    if "agent_sessions" in tables:
+        session_cols = {c["name"] for c in inspector.get_columns("agent_sessions")}
+        if "coverage_report" not in session_cols:
+            _add_col("agent_sessions", "coverage_report", "TEXT")

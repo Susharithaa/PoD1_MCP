@@ -37,6 +37,27 @@ export const adminApi = {
   setActive:    (id, isActive)   => http.patch(`/api/auth/admin/users/${id}/active`, { is_active: isActive }).then(r => r.data),
 };
 
+export const adminOpsApi = {
+  audit:       (limit = 100) => http.get(`/api/admin/audit?limit=${limit}`).then(r => r.data),
+  liveLogs:    (limit = 100) => http.get(`/api/admin/logs/live?limit=${limit}`).then(r => r.data),
+  costs:       ()            => http.get("/api/admin/llm-costs").then(r => r.data),
+  incidents:   ()            => http.get("/api/admin/incidents").then(r => r.data),
+  aggregate:   ()            => http.post("/api/admin/incidents/aggregate").then(r => r.data),
+  plugins:     ()            => http.get("/api/admin/plugins").then(r => r.data),
+  savePlugin:  (name, data)  => http.put(`/api/admin/plugins/${name}`, data).then(r => r.data),
+  rbac:        ()            => http.get("/api/admin/rbac").then(r => r.data),
+  saveRbac:    (data)        => http.put("/api/admin/rbac", data).then(r => r.data),
+  exportConfig: ()           => http.get("/api/admin/config/export").then(r => r.data),
+  importConfig: (data)       => http.post("/api/admin/config/import", data).then(r => r.data),
+};
+
+export const securityApi = {
+  listTokens:   ()             => http.get("/api/security/tokens").then(r => r.data),
+  createToken:  (name, scopes) => http.post("/api/security/tokens", { name, scopes }).then(r => r.data),
+  rotateToken:  (id)           => http.post(`/api/security/tokens/${id}/rotate`).then(r => r.data),
+  revokeToken:  (id)           => http.delete(`/api/security/tokens/${id}`),
+};
+
 export const agentApi = {
   startChat: (message) =>
     http.post("/api/agent/chat", { message }).then((r) => r.data),
@@ -105,6 +126,19 @@ export const chatgptApi = {
   connect:     (id)    => http.post(`/api/chatgpt/connect/${id}`).then((r) => r.data),
   disconnect:  (id)    => http.delete(`/api/chatgpt/disconnect/${id}`).then((r) => r.data),
   getTools:    (id)    => http.get(`/api/chatgpt/tools/${id}`).then((r) => r.data),
-  chat:        (message, api_ids = [], session_id = null) =>
-    http.post("/api/chatgpt/chat", { message, api_ids, session_id }).then((r) => r.data),
+  chat:        (message, api_ids = [], session_id = null, dry_run = false) =>
+    http.post("/api/chatgpt/chat", { message, api_ids, session_id, dry_run }).then((r) => r.data),
+};
+
+export const domainApi = {
+  appInfo:       () => http.get("/api/domain/application-info").then(r => r.data),
+  listReports:   () => http.get("/api/domain/expense-reports").then(r => r.data),
+  createReport:  (data) => http.post("/api/domain/expense-reports", data).then(r => r.data),
+  listFiles:     () => http.get("/api/domain/files").then(r => r.data),
+  downloadFile:  (url) => http.post(`/api/domain/file-download?url=${encodeURIComponent(url)}`).then(r => r.data),
+};
+
+export const systemApi = {
+  controls:     () => http.get("/api/admin/system-controls").then(r => r.data),
+  saveControls: (data) => http.put("/api/admin/system-controls", data).then(r => r.data),
 };

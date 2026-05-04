@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminApi, subscriptionApi } from "../lib/api";
+import { adminApi, adminOpsApi, subscriptionApi, systemApi } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
@@ -12,7 +12,7 @@ export default function Admin() {
 
 function AdminPanel() {
   const { user: me } = useAuth();
-  const [tab,     setTab]     = useState("users"); // "users" | "chat-access"
+  const [tab,     setTab]     = useState("users");
   const [users,   setUsers]   = useState([]);
   const [chatUsers, setChatUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +100,9 @@ function AdminPanel() {
         {[
           { key: "users", label: "Users", count: users.length },
           { key: "chat-access", label: "Chat Access", count: pendingCount },
+          { key: "plugins", label: "Plugins" },
+          { key: "rbac", label: "RBAC" },
+          { key: "ops", label: "Operations" },
         ].map(({ key, label, count }) => (
           <button
             key={key}
@@ -185,7 +188,7 @@ function AdminPanel() {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : tab === "chat-access" ? (
         <div className="space-y-3">
           {chatUsers.length === 0 ? (
             <p className="text-sm text-zinc-600 py-8 text-center">No chat access requests yet.</p>
@@ -244,7 +247,227 @@ function AdminPanel() {
             </div>
           ))}
         </div>
+      ) : tab === "plugins" ? (
+        <PluginSettings />
+      ) : tab === "rbac" ? (
+        <RbacSettings />
+      ) : (
+        <OperationsDashboard />
       )}
+    </div>
+  );
+}
+
+function PluginSettings() {
+  const [plugins, setPlugins] = useState([]);
+  const [name, setName] = useState("default-search");
+  const [config, setConfig] = useState("{}");
+  const [enabled, setEnabled] = useState(true);
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setPlugins(await adminOpsApi.plugins());
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function save() {
+    try {
+      await adminOpsApi.savePlugin(name, { enabled, config: JSON.parse(config || "{}") });
+      setMessage("Saved");
+      load();
+    } catch {
+      setMessage("Invalid JSON or save failed");
+    }
+  }
+
+  async function exportConfig() {
+    const data = await adminOpsApi.exportConfig();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mcp-hub-config.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importConfig(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    await adminOpsApi.importConfig(JSON.parse(text));
+    setMessage("Imported");
+    load();
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+      <div className="card p-4 space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-100">Plugin Settings</h2>
+        <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="Plugin name" />
+        <label className="flex items-center gap-2 text-sm text-zinc-400">
+          <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+          Enabled
+        </label>
+        <textarea className="input w-full h-32 font-mono text-xs" value={config} onChange={e => setConfig(e.target.value)} />
+        <button className="btn-primary w-full" onClick={save}>Save Plugin</button>
+        <div className="flex gap-2">
+          <button className="btn-secondary flex-1" onClick={exportConfig}>Export</button>
+          <label className="btn-secondary flex-1 text-center cursor-pointer">
+            Import
+            <input type="file" accept="application/json" className="hidden" onChange={importConfig} />
+          </label>
+        </div>
+        {message && <p className="text-xs text-zinc-500">{message}</p>}
+      </div>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-zinc-800"><th className="text-left px-4 py-3 text-zinc-500">Name</th><th className="text-left px-4 py-3 text-zinc-500">Enabled</th><th className="text-left px-4 py-3 text-zinc-500">Config</th></tr></thead>
+          <tbody>{plugins.map(p => (
+            <tr key={p.id || p.name} className="border-b border-zinc-800/60">
+              <td className="px-4 py-3 text-zinc-200">{p.name}</td>
+              <td className="px-4 py-3 text-zinc-400">{String(p.enabled)}</td>
+              <td className="px-4 py-3 text-zinc-500 font-mono text-xs">{JSON.stringify(p.config)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RbacSettings() {
+  const [text, setText] = useState("{}");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    adminOpsApi.rbac().then(data => setText(JSON.stringify(data, null, 2)));
+  }, []);
+
+  async function save() {
+    try {
+      await adminOpsApi.saveRbac(JSON.parse(text));
+      setMessage("Saved");
+    } catch {
+      setMessage("Invalid JSON or save failed");
+    }
+  }
+
+  return (
+    <div className="card p-4 max-w-2xl space-y-3">
+      <h2 className="text-sm font-semibold text-zinc-100">RBAC Settings</h2>
+      <textarea className="input w-full h-64 font-mono text-xs" value={text} onChange={e => setText(e.target.value)} />
+      <button className="btn-primary" onClick={save}>Save RBAC</button>
+      {message && <p className="text-xs text-zinc-500">{message}</p>}
+    </div>
+  );
+}
+
+function OperationsDashboard() {
+  const [audit, setAudit] = useState([]);
+  const [costs, setCosts] = useState(null);
+  const [incidents, setIncidents] = useState([]);
+  const [controls, setControls] = useState(null);
+
+  async function load() {
+    const [a, c, i, s] = await Promise.all([
+      adminOpsApi.liveLogs(50),
+      adminOpsApi.costs(),
+      adminOpsApi.incidents(),
+      systemApi.controls(),
+    ]);
+    setAudit(a);
+    setCosts(c);
+    setIncidents(i);
+    setControls(s);
+  }
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  async function aggregate() {
+    await adminOpsApi.aggregate();
+    load();
+  }
+
+  async function saveControls(next) {
+    const saved = await systemApi.saveControls(next);
+    setControls(saved);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <Metric label="LLM Requests" value={costs?.request_count ?? 0} />
+        <Metric label="Tokens" value={costs?.prompt_tokens + costs?.completion_tokens || 0} />
+        <Metric label="Cost USD" value={`$${(costs?.cost_usd ?? 0).toFixed(4)}`} />
+      </div>
+      {controls && (
+        <div className="card p-4">
+          <h2 className="text-sm font-semibold text-zinc-100 mb-3">Safe Mode Controls</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="flex items-center justify-between rounded border border-zinc-800 px-3 py-2 text-sm text-zinc-400">
+              Emergency stop
+              <input type="checkbox" checked={!!controls.emergency_stop}
+                onChange={e => saveControls({ ...controls, emergency_stop: e.target.checked })} />
+            </label>
+            <label className="flex items-center justify-between rounded border border-zinc-800 px-3 py-2 text-sm text-zinc-400">
+              Dry-run tools
+              <input type="checkbox" checked={!!controls.dry_run_tools}
+                onChange={e => saveControls({ ...controls, dry_run_tools: e.target.checked })} />
+            </label>
+            <label className="rounded border border-zinc-800 px-3 py-2 text-sm text-zinc-400">
+              Tool budget ms
+              <input className="input mt-2 w-full" type="number" min="1" value={controls.max_tool_execution_ms || 5000}
+                onChange={e => setControls({ ...controls, max_tool_execution_ms: Number(e.target.value) })}
+                onBlur={() => saveControls(controls)} />
+            </label>
+          </div>
+        </div>
+      )}
+      <div className="card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-zinc-100">Incidents</h2>
+          <button className="btn-secondary" onClick={aggregate}>Aggregate</button>
+        </div>
+        <div className="space-y-2">
+          {incidents.length === 0 ? <p className="text-xs text-zinc-600">No incidents.</p> : incidents.map(i => (
+            <div key={i.id} className="rounded border border-zinc-800 px-3 py-2 text-sm">
+              <span className="text-zinc-200">{i.title}</span>
+              <span className="ml-2 text-xs text-zinc-500">{i.severity} / {i.status}</span>
+              <p className="text-xs text-zinc-500 mt-1">{i.summary}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="px-4 py-3 border-b border-zinc-800 text-sm font-semibold text-zinc-100">Real-time Audit Log</div>
+        <table className="w-full text-xs">
+          <tbody>
+            {audit.map(row => (
+              <tr key={row.id} className="border-b border-zinc-800/60">
+                <td className="px-4 py-2 text-zinc-500">{new Date(row.created_at).toLocaleTimeString()}</td>
+                <td className="px-4 py-2 text-zinc-300">{row.actor_email || "system"}</td>
+                <td className="px-4 py-2 text-zinc-400">{row.action}</td>
+                <td className="px-4 py-2 text-zinc-600">{row.resource_id}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="card p-4">
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-zinc-100">{value}</p>
     </div>
   );
 }

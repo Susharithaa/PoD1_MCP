@@ -21,6 +21,7 @@ class ChatRequest(BaseModel):
     message: str
     api_ids: list[str] = []       # empty = use all connected APIs
     session_id: str | None = None  # None = start new session
+    dry_run: bool = False
 
 
 class ChatResponse(BaseModel):

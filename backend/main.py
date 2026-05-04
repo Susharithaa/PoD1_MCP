@@ -5,8 +5,11 @@ from slowapi.errors import RateLimitExceeded
 
 from config import settings
 from database import init_db
-from routers import agent, registry, chatgpt, monitor, auth, social_auth, subscription
+from routers import admin_ext, agent, chatgpt, domain, mcp, monitor, registry, security, auth, social_auth, subscription
 from utils.limiter import limiter
+from utils.migrations import run_server_migrations
+from utils.observability import RequestContextMiddleware, configure_logging
+from utils.otel import setup_otel
 
 app = FastAPI(
     title="MCP Hub API",
@@ -16,6 +19,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(RequestContextMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,14 +32,21 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(social_auth.router)
 app.include_router(subscription.router)
+app.include_router(security.router)
 app.include_router(agent.router)
 app.include_router(registry.router)
 app.include_router(chatgpt.router)
 app.include_router(monitor.router)
+app.include_router(mcp.router)
+app.include_router(domain.router)
+app.include_router(admin_ext.router)
+setup_otel(app)
 
 
 @app.on_event("startup")
 def startup():
+    configure_logging()
+    run_server_migrations()
     init_db()
 
 

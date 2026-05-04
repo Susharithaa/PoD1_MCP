@@ -295,7 +295,7 @@ async def chat_with_tools(
         turn_additions.append(assistant_dict)
 
         # ── Orchestrator: parallel execution + retry ──────────────────────────
-        results = await tool_orchestrator.execute_all(msg.tool_calls, db)
+        results = await tool_orchestrator.execute_all(msg.tool_calls, db, dry_run=req.dry_run)
 
         for er in results:
             # Persist to ToolCallLog if we resolved the endpoint
