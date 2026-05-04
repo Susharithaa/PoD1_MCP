@@ -1,84 +1,66 @@
 openapi: 3.0.3
 info:
-  title: Sample Weather API
+  title: Open-Meteo Weather API
   version: 1.0.0
-  description: A tiny API for testing MCP Hub document upload.
+  description: A small public weather API spec for MCP Hub upload testing.
 servers:
-  - url: https://api.example.com
+  - url: https://api.open-meteo.com
 paths:
-  /weather/current:
+  /v1/forecast:
     get:
-      summary: Get current weather for a city
-      operationId: getCurrentWeather
+      summary: Get weather forecast
+      operationId: getWeatherForecast
       parameters:
-        - name: city
+        - name: latitude
           in: query
           required: true
           schema:
-            type: string
-          description: City name, for example Tokyo or Bengaluru.
-        - name: units
+            type: number
+          description: Latitude in WGS84 coordinates.
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+          description: Longitude in WGS84 coordinates.
+        - name: current
           in: query
           required: false
           schema:
             type: string
-            enum: [metric, imperial]
-            default: metric
-      responses:
-        "200":
-          description: Current weather details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  city:
-                    type: string
-                  temperature:
-                    type: number
-                  condition:
-                    type: string
-                  humidity:
-                    type: integer
-  /weather/forecast:
-    get:
-      summary: Get a multi-day weather forecast
-      operationId: getWeatherForecast
-      parameters:
-        - name: city
+          description: Comma-separated current weather variables.
+        - name: hourly
           in: query
-          required: true
+          required: false
           schema:
             type: string
-        - name: days
+          description: Comma-separated hourly weather variables.
+        - name: forecast_days
           in: query
           required: false
           schema:
             type: integer
             minimum: 1
-            maximum: 7
+            maximum: 16
             default: 3
+          description: Number of forecast days to return.
       responses:
         "200":
-          description: Forecast list
+          description: Weather forecast response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  city:
-                    type: string
-                  forecast:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        date:
-                          type: string
-                          format: date
-                        high:
-                          type: number
-                        low:
-                          type: number
-                        condition:
-                          type: string
+                  latitude:
+                    type: number
+                  longitude:
+                    type: number
+                  generationtime_ms:
+                    type: number
+                  current:
+                    type: object
+                    additionalProperties: true
+                  hourly:
+                    type: object
+                    additionalProperties: true

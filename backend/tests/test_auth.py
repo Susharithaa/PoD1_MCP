@@ -30,6 +30,15 @@ def test_second_user_is_not_admin(client):
     assert me["role"] == "user"
 
 
+def test_bootstrap_email_can_force_admin(client, monkeypatch):
+    monkeypatch.setattr("config.settings.admin_bootstrap_emails", "me@test.com")
+    client.post("/api/auth/register", json={"email": "other@test.com", "password": "pass"})
+    r = client.post("/api/auth/register", json={"email": "me@test.com", "password": "pass"})
+    token = r.json()["access_token"]
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).json()
+    assert me["role"] == "admin"
+
+
 def test_duplicate_email_rejected(client):
     client.post("/api/auth/register", json={"email": "dup@test.com", "password": "pass"})
     r = client.post("/api/auth/register", json={"email": "dup@test.com", "password": "pass"})

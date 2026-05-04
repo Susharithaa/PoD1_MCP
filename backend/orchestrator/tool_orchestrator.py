@@ -19,10 +19,12 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
+from config import settings
 from models.api_definition import ApiDefinition, ApiEndpoint
 from translators.openai_translator import resolve_tool_call
 from utils.encryption import decrypt_creds
 from utils.masking import mask_sensitive
+from utils.observability import request_id_ctx
 from utils.ssrf import validate_outbound_url
 from utils.safety import is_dry_run_enabled, is_emergency_stop_enabled, max_tool_execution_ms
 
@@ -185,11 +187,15 @@ async def _http_call(
             url = url.replace(f"{{{param}}}", str(args.pop(param)))
 
     req_auth, extra_headers, extra_params = _build_auth(decrypt_creds(ep.auth_credentials))
+    request_id = request_id_ctx.get()
+    if request_id:
+        extra_headers = dict(extra_headers)
+        extra_headers["X-Request-Id"] = request_id
     if extra_params:
         args.update(extra_params)
 
     try:
-        async with httpx.AsyncClient(timeout=TOOL_TIMEOUT_S, verify=False) as client:
+        async with httpx.AsyncClient(timeout=TOOL_TIMEOUT_S, verify=not settings.allow_insecure_ssl) as client:
             method = ep.method.upper()
             budget_seconds = max_tool_execution_ms() / 1000
             timeout = min(TOOL_TIMEOUT_S, budget_seconds)

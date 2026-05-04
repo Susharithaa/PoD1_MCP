@@ -63,15 +63,76 @@ function AppShell() {
   }
 
   return (
-    <div className="flex h-screen bg-zinc-950 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.88),rgba(255,255,255,0.74)_36%,rgba(246,246,242,0.98)_72%)] text-[var(--ink)]">
       <Sidebar collapsed={collapsed} onToggle={toggleCollapse} />
-      <main className="flex-1 overflow-y-auto bg-zinc-950 min-w-0">
-        <div className="px-8 py-8 animate-fade-in">
+      <main className="flex-1 overflow-y-auto min-w-0">
+        <Topbar />
+        <div className="px-6 lg:px-10 py-6 lg:py-8 animate-fade-in">
           <Outlet />
         </div>
       </main>
       <UploadOverlay />
       <UploadToast />
+    </div>
+  );
+}
+
+function Topbar() {
+  const { lang, toggle } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+
+  return (
+    <header className="sticky top-0 z-20 h-14 border-b border-[var(--line)] bg-[rgba(250,250,248,0.82)] backdrop-blur-md">
+      <div className="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-xl">
+          <input
+            className="input !bg-[var(--surface)] !border-transparent !pl-10 !pr-14"
+            placeholder={lang === "ja" ? "API・セッション・ツールを検索" : "Search APIs, sessions, tools"}
+          />
+          <SearchIcon />
+          <span className="kbd absolute right-3 top-1/2 -translate-y-1/2">⌘K</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={toggle} className="btn-ghost btn-sm focus-ring" title={lang === "ja" ? "Switch to English" : "日本語に切り替え"}>
+            <GlobeIcon />
+            <span className="mono">{lang === "ja" ? "JA" : "EN"}</span>
+          </button>
+          <button onClick={toggleTheme} className="btn-ghost btn-sm focus-ring" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            {theme === "dark" ? <MoonIcon /> : <SunIcon />}
+          </button>
+          <span className="pill pill-ok hidden sm:inline-flex">
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--ok)" }} />
+            {user?.role === "admin" ? "Admin" : "Online"}
+          </span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-2)] pointer-events-none">
+      <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function BrandMark({ compact = false }) {
+  return (
+    <div className={`flex items-center gap-3 ${compact ? "justify-center" : ""}`}>
+      <div className="dline dline-lg">
+        <span />
+        <span />
+      </div>
+      {!compact && (
+        <div className="min-w-0">
+          <div className="brand-mincho text-[15px] leading-none">MCP Hub</div>
+          <div className="text-[9px] uppercase tracking-[0.28em] text-[var(--muted-2)] mt-1">middleware</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -99,27 +160,25 @@ function Sidebar({ collapsed, onToggle }) {
 
   return (
     <aside
-      className="flex-shrink-0 flex flex-col border-r border-zinc-800 bg-zinc-950 transition-[width] duration-200"
+      className="flex-shrink-0 flex flex-col border-r border-[var(--line)] bg-[var(--bg)] transition-[width] duration-200 sticky top-0 h-screen"
       style={{ width: collapsed ? 48 : 224 }}
     >
       {/* Logo */}
-      <div className="h-14 flex items-center border-b border-zinc-800 px-3 overflow-hidden">
+      <div className="h-16 flex items-center border-b border-[var(--line)] px-3 overflow-hidden">
         {collapsed ? (
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm mx-auto flex-shrink-0">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M8 3v10" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-            </svg>
+          <div className="dline dline-lg mx-auto">
+            <span />
+            <span />
           </div>
         ) : (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm flex-shrink-0">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8h10M8 3v10" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              </svg>
+            <div className="dline dline-lg flex-shrink-0">
+              <span />
+              <span />
             </div>
             <div className="min-w-0">
-              <span className="font-semibold text-zinc-100 text-sm tracking-tight block">MCP Hub</span>
-              <span className="block text-[9px] text-zinc-600 uppercase tracking-widest -mt-0.5">middleware</span>
+              <span className="brand-mincho text-[15px] tracking-[0.04em] block">MCP Hub</span>
+              <span className="block text-[9px] text-[var(--muted-2)] uppercase tracking-[0.28em] -mt-0.5">middleware</span>
             </div>
           </div>
         )}
@@ -130,7 +189,7 @@ function Sidebar({ collapsed, onToggle }) {
         {NAV_SECTIONS.map((section, i) => (
           <div key={i} className={collapsed ? "mb-1" : "mb-5"}>
             {!collapsed && section.headingKey && (
-              <p className="px-2 mb-1.5 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">
+              <p className="px-2 mb-1.5 text-[10px] font-semibold text-[var(--muted-2)] uppercase tracking-[0.18em]">
                 {t(section.headingKey)}
               </p>
             )}
@@ -163,11 +222,11 @@ function Sidebar({ collapsed, onToggle }) {
         ))}
 
         {/* Collapse toggle */}
-        <div className={`mt-2 pt-2 border-t border-zinc-800/60 ${collapsed ? "px-0" : ""}`}>
+        <div className={`mt-2 pt-2 border-t border-[var(--line)] ${collapsed ? "px-0" : ""}`}>
           <button
             onClick={onToggle}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`${collapsed ? iconBtnClass : "flex items-center gap-2 w-full px-2.5 py-2 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors text-xs"}`}
+            className={`${collapsed ? iconBtnClass : "flex items-center gap-2 w-full px-2.5 py-2 rounded-lg text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors text-xs"}`}
           >
             {collapsed ? <ChevronRightIcon /> : <><ChevronLeftIcon /><span>Collapse</span></>}
           </button>
@@ -175,7 +234,7 @@ function Sidebar({ collapsed, onToggle }) {
       </nav>
 
       {/* Footer */}
-      <div className={`${collapsed ? "px-1.5" : "px-3"} py-3 border-t border-zinc-800`}>
+      <div className={`${collapsed ? "px-1.5" : "px-3"} py-3 border-t border-[var(--line)]`}>
         {collapsed ? (
           /* ── Collapsed footer: icons only ── */
           <div className="flex flex-col items-center gap-1">
@@ -185,14 +244,12 @@ function Sidebar({ collapsed, onToggle }) {
                 <ShieldIcon />
               </NavLink>
             )}
-            {user && (
-              <div className="relative flex justify-center w-full py-2">
-                <div className="w-6 h-6 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center"
-                     title={user.email}>
-                  <span className="text-[10px] font-semibold text-blue-400 uppercase">{user.email[0]}</span>
-                </div>
+            {user && <div className="relative flex justify-center w-full py-2">
+              <div className="w-6 h-6 rounded-full bg-[var(--ink)] text-[var(--bg)] border border-[var(--ink)] flex items-center justify-center"
+                   title={user.email}>
+                <span className="text-[10px] font-semibold uppercase">{user.email[0]}</span>
               </div>
-            )}
+            </div>}
             {user && (
               <button onClick={handleLogout} title="Sign out" className={iconBtnClass}>
                 <LogoutIcon />

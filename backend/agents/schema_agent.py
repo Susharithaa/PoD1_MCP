@@ -151,7 +151,35 @@ class SchemaAgent(BaseAgent):
         fmt       = extracted.get("_fmt", "")
 
         if not chunks:
-            raise ValueError("No endpoint chunks found — ParsingAgent may have failed.")
+            session.draft_api = {
+                "name": extracted.get("name", "Uploaded Document"),
+                "description": extracted.get("description", "") or (
+                    "This document does not appear to contain API endpoints."
+                ),
+                "base_url": extracted.get("base_url", ""),
+                "version": "1.0.0",
+                "auth_type": extracted.get("auth_type", "NONE"),
+                "endpoints": [],
+            }
+            session.validation_reports = [{
+                "hint": "DOCUMENT",
+                "is_valid": True,
+                "was_auto_fixed": False,
+                "issues": extracted.get("_warnings") or [
+                    "No API endpoints detected; document treated as a generic YAML/text artifact."
+                ],
+            }]
+            session.coverage_report = {
+                "total_reference": 0,
+                "total_generated": 0,
+                "matched": 0,
+                "missing": 0,
+                "extra": 0,
+                "coverage_pct": 100.0,
+                "missing_endpoints": [],
+                "extra_endpoints": [],
+            }
+            return session
 
         sem = asyncio.Semaphore(_MAX_CONCURRENT)
 

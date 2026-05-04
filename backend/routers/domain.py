@@ -1,7 +1,7 @@
+import asyncio
 import uuid
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -10,9 +10,9 @@ from models.operational import ExpenseReport, TransportationCost
 from models.user import User
 from schemas.domain import ApiEnvelope, ExpenseReportIn, ExpenseReportOut, TransportationCostOut
 from utils.auth import get_current_user
-from utils.masking import mask_sensitive
 from utils.observability import request_id_ctx
-from utils.ssrf import validate_outbound_url
+from utils.masking import mask_sensitive
+from utils.remote_fetch import fetch_remote_text
 
 router = APIRouter(prefix="/api/domain", tags=["domain"])
 
@@ -127,18 +127,10 @@ def list_files(
 @router.post("/file-download", response_model=ApiEnvelope)
 async def download_file(url: str = Query(...), current_user: User = Depends(get_current_user)):
     try:
-        validate_outbound_url(url)
+        result = await asyncio.to_thread(fetch_remote_text, url, request_id=request_id_ctx.get())
     except ValueError as exc:
         raise HTTPException(400, f"Blocked URL: {exc}")
-    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True, verify=False) as client:
-        resp = await client.get(url)
-    resp.raise_for_status()
     return ApiEnvelope(
-        data={
-            "url": url,
-            "content_type": resp.headers.get("content-type"),
-            "size": len(resp.content),
-            "preview": mask_sensitive(resp.text[:1000] if "text" in resp.headers.get("content-type", "") else ""),
-        },
+        data=result.as_dict(),
         request_id=request_id_ctx.get(),
     )

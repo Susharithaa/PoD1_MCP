@@ -89,10 +89,10 @@ Copy the example and fill in your values:
 
 ```bash
 # Windows
-copy .env.Example .env
+copy .env.example .env
 
 # macOS / Linux
-cp .env.Example .env
+cp .env.example .env
 ```
 
 Then open `.env` and set at minimum:
@@ -256,6 +256,7 @@ python -m pytest tests/test_patch_draft.py -v
 ```
 
 Tests use an in-memory SQLite database and `MOCK_LLM=true` — no real API keys or database needed.
+If `slowapi` is missing in a lean local environment, the backend still boots with a no-op fallback limiter.
 
 ---
 
@@ -271,6 +272,11 @@ Tests use an in-memory SQLite database and `MOCK_LLM=true` — no real API keys 
 | `JWT_SECRET` | `change-me-in-production` | Yes | Secret for signing JWT tokens — must be changed |
 | `JWT_EXPIRE_MINUTES` | `10080` (7 days) | No | Session token lifetime |
 | `ENCRYPTION_KEY` | _(empty)_ | Yes | Hex key for encrypting stored API credentials |
+| `READ_ONLY_MODE` | `false` | No | Blocks mutating HTTP requests when enabled |
+| `EMERGENCY_STOP` | `false` | No | Blocks mutating HTTP requests except admin controls |
+| `DRY_RUN_TOOLS` | `false` | No | Simulates tool execution without making outbound calls |
+| `MAX_TOOL_EXECUTION_MS` | `5000` | No | Hard budget for outbound tool execution |
+| `ALLOW_INSECURE_SSL` | `false` | No | Allow disabling outbound TLS verification for local testing only |
 | `SMTP_HOST` | `smtp.gmail.com` | No | SMTP server host |
 | `SMTP_PORT` | `587` | No | SMTP port (TLS) |
 | `SMTP_USER` | _(empty)_ | Yes | Gmail address for sending OTP emails |

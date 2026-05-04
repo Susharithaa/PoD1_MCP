@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     read_only_mode: bool = False
     max_request_bytes: int = 10 * 1024 * 1024
     allow_private_tool_hosts: bool = False
+    allow_insecure_ssl: bool = False
     csp_policy: str = "default-src 'self'; frame-ancestors 'none'"
     okta_authorize_url: str = ""
     okta_client_id: str = ""
@@ -78,12 +79,17 @@ class Settings(BaseSettings):
     emergency_stop: bool = False
     dry_run_tools: bool = False
     max_tool_execution_ms: int = 5000
+    admin_bootstrap_emails: str = ""
 
     model_config = SettingsConfigDict(env_file=_env_files_for_settings(), extra="ignore")
 
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
+
+    @property
+    def admin_bootstrap_emails_list(self) -> list[str]:
+        return [email.strip().lower() for email in self.admin_bootstrap_emails.split(",") if email.strip()]
 
 
 settings = Settings()

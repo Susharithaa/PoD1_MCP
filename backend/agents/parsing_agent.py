@@ -21,17 +21,15 @@ class ParsingAgent(BaseAgent):
 
         base_info, chunks = await chunk(text, fmt)
 
-        if not chunks:
-            raise ValueError(
-                "No API endpoints could be detected in the uploaded document. "
-                "Make sure the file contains API documentation with HTTP methods and paths."
-            )
-
         session.extracted_schema = {
             "base_url":  base_info.get("base_url", ""),
             "auth_type": base_info.get("auth_type", "UNKNOWN"),
             "name":      base_info.get("name", ""),
             "_fmt":      fmt,
+            "_doc_type": "api" if chunks else "generic_yaml_or_text",
+            "_warnings": [] if chunks else [
+                "No API endpoints were detected. The file looks like generic YAML/text rather than API documentation."
+            ],
             "_chunks": [
                 {"method": c.method, "path": c.path, "hint": c.hint, "content": c.content}
                 for c in chunks

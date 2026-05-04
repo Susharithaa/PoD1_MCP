@@ -1,12 +1,28 @@
 """OpenAI SDK wrapper with gpt-4o and a mock mode for local dev."""
 
 import json
+import logging
 from openai import AsyncOpenAI
 from config import settings
 
 _client: AsyncOpenAI | None = None
 
 MODEL = "gpt-4o"
+log = logging.getLogger(__name__)
+
+
+def _should_mock() -> bool:
+    key = (settings.openai_api_key or "").strip()
+    if settings.mock_llm:
+        return True
+    if not key:
+        return True
+    placeholder_tokens = {"mock", "sk-...", "sk-proj-...", "replace-with-real-key"}
+    if key in placeholder_tokens:
+        return True
+    if key.startswith("sk-") and len(key) < 20:
+        return True
+    return False
 
 
 def get_client() -> AsyncOpenAI:
@@ -18,7 +34,9 @@ def get_client() -> AsyncOpenAI:
 
 async def chat(system: str, user: str, *, max_tokens: int = 2048) -> str:
     """Single-turn LLM call. Returns raw text response."""
-    if settings.mock_llm:
+    if _should_mock():
+        if not settings.mock_llm:
+            log.warning("Falling back to mock LLM mode because OPENAI_API_KEY is missing or placeholder-like.")
         return _mock_response(user)
 
     client = get_client()
@@ -35,7 +53,9 @@ async def chat(system: str, user: str, *, max_tokens: int = 2048) -> str:
 
 async def chat_json(system: str, user: str, *, max_tokens: int = 2048) -> dict:
     """LLM call that enforces a JSON response. Returns parsed dict."""
-    if settings.mock_llm:
+    if _should_mock():
+        if not settings.mock_llm:
+            log.warning("Falling back to mock LLM mode because OPENAI_API_KEY is missing or placeholder-like.")
         raw = _mock_response(user)
         return _parse_json(raw)
 

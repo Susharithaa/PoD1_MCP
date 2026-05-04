@@ -14,8 +14,7 @@ from models.user import User
 from translators.openai_translator import api_to_tools
 from utils.auth import get_current_user, require_scope
 from utils.masking import mask_sensitive
-from utils.ssrf import validate_outbound_url
-import httpx
+from utils.remote_fetch import fetch_remote_text
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
@@ -152,18 +151,10 @@ def _handle_rpc(envelope: JsonRpcEnvelope, db: Session, user: User) -> dict:
             if not url:
                 return _err(envelope.id, -32602, "url is required")
             try:
-                validate_outbound_url(url)
-                with httpx.Client(timeout=5.0, follow_redirects=True, verify=False) as client:
-                    response = client.get(url)
-                response.raise_for_status()
+                result = fetch_remote_text(url, request_id=str(envelope.id) if envelope.id is not None else None, timeout_s=5.0)
             except Exception as exc:
                 return _err(envelope.id, -32010, f"Download failed: {exc}")
-            return _ok(envelope.id, {
-                "url": url,
-                "content_type": response.headers.get("content-type"),
-                "size": len(response.content),
-                "preview": response.text[:1000] if "text" in response.headers.get("content-type", "") else "",
-            })
+            return _ok(envelope.id, result.as_dict())
         return _err(envelope.id, -32601, f"Unknown tool: {tool_name}")
     return _err(envelope.id, -32601, f"Unknown method: {envelope.method}")
 

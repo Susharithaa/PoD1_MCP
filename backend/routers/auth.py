@@ -11,6 +11,7 @@ from utils.auth import hash_password, verify_password, create_access_token, get_
 from utils.limiter import limiter
 from utils.otp import otp_store
 from utils.email_sender import send_otp_email
+from config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -32,13 +33,15 @@ def _user_response(u: User) -> UserResponse:
 def register(request: Request, req: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == req.email).first():
         raise HTTPException(400, "Email already registered")
-    is_first = db.query(User).count() == 0
+    has_admin = db.query(User).filter(User.role == "admin").first() is not None
+    bootstrap_emails = set(settings.admin_bootstrap_emails_list)
+    should_be_admin = (not has_admin) or (req.email.strip().lower() in bootstrap_emails)
     user = User(
         id=str(uuid4()),
         email=req.email,
         hashed_password=hash_password(req.password),
         full_name=req.full_name,
-        role="admin" if is_first else "user",
+        role="admin" if should_be_admin else "user",
     )
     db.add(user)
     db.commit()
