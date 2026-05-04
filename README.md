@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MCP Hub
 
 An AI-powered platform that parses API documentation (PDFs, OpenAPI specs, Postman collections) and registers them as MCP tools, enabling ChatGPT and other LLM clients to discover and call your APIs.
@@ -395,3 +396,6 @@ uvicorn main:app --reload
 ```
 
 The first user to register after reset becomes admin again.
+=======
+# PoD1_MCP
+>>>>>>> 37e3254 (Initial commit)

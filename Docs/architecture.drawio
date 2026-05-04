@@ -1,0 +1,61 @@
+<mxfile host="app.diagrams.net" modified="2026-05-05T00:00:00.000Z" agent="Codex" version="24.7.17">
+  <diagram id="pod1-mcp-architecture" name="PoD1_MCP Architecture">
+    <mxGraphModel dx="1320" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="PoD1_MCP - MCP / Draw.io Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="184" y="30" width="800" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="actor" value="Developer / Codex" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;fontColor=#1f2937;strokeColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="70" y="145" width="80" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="workspace" value="Project Workspace&#xa;PoD1_MCP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#475569;fontSize=16;fontStyle=1;fontColor=#0f172a;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="240" y="110" width="700" height="520" as="geometry"/>
+        </mxCell>
+        <mxCell id="readme" value="README.md&#xa;Project identity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#0891b2;fontSize=14;fontColor=#164e63;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="295" y="175" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="config" value=".mcp.json&#xa;mcpServers.drawio" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef2ff;strokeColor=#4f46e5;fontSize=14;fontStyle=1;fontColor=#312e81;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="295" y="325" width="180" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="command" value="Command&#xa;npx" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef9c3;strokeColor=#ca8a04;fontSize=14;fontColor=#713f12;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="545" y="300" width="150" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="args" value="Args&#xa;@drawio/mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef9c3;strokeColor=#ca8a04;fontSize=14;fontColor=#713f12;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="545" y="395" width="150" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="server" value="Draw.io MCP Server&#xa;Diagram tooling endpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontSize=15;fontStyle=1;fontColor=#064e3b;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="750" y="335" width="150" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="artifact" value="docs/architecture.drawio&#xa;Editable Draw.io diagram" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="1">
+          <mxGeometry x="545" y="520" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="future" value="Future project components&#xa;Add services, APIs, databases, and clients here as code is added" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;dashed=1;fontSize=13;fontColor=#334155;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="295" y="500" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="note" value="Current repo has only README.md and MCP configuration, so this diagram documents the active MCP architecture rather than application runtime services." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffffff;strokeColor=#94a3b8;fontSize=12;fontColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="760" y="500" width="140" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-actor-workspace" value="works in" style="endArrow=block;html=1;rounded=0;strokeColor=#475569;fontSize=12;fontColor=#475569;" edge="1" parent="1" source="actor" target="workspace">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-config-command" value="starts" style="endArrow=block;html=1;rounded=0;strokeColor=#4f46e5;fontSize=12;fontColor=#4f46e5;" edge="1" parent="1" source="config" target="command">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-command-server" value="executes package" style="endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=12;fontColor=#713f12;" edge="1" parent="1" source="command" target="server">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-args-server" value="loads" style="endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=12;fontColor=#713f12;" edge="1" parent="1" source="args" target="server">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-server-artifact" value="creates / edits diagrams" style="endArrow=block;html=1;rounded=0;strokeColor=#059669;fontSize=12;fontColor=#064e3b;" edge="1" parent="1" source="server" target="artifact">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-future-artifact" value="architecture evolves from code" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#64748b;fontSize=12;fontColor=#334155;" edge="1" parent="1" source="future" target="artifact">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
