@@ -7,6 +7,23 @@ def _tool_name(api_id: str, ep_id: str) -> str:
     return f"t_{api_id[:8]}_{ep_id[:8]}"
 
 
+def _friendly_tool_name(api: ApiDefinition, ep: ApiEndpoint) -> str:
+    """
+    Prefer a human-readable endpoint name/operationId when available so the UI
+    mirrors the uploaded spec. Fall back to a stable synthetic name if needed.
+    """
+    candidate = (ep.name or "").strip()
+    if not candidate:
+        candidate = f"{ep.method.lower()}_{ep.path.strip('/').replace('/', '_').replace('{', '').replace('}', '').replace('-', '_')}"
+    candidate = re.sub(r"[^a-zA-Z0-9_]", "_", candidate)
+    candidate = re.sub(r"_+", "_", candidate).strip("_").lower()
+    if not candidate:
+        return _tool_name(api.id, ep.id)
+    if len(candidate) > 48:
+        candidate = candidate[:48].rstrip("_")
+    return candidate
+
+
 def _sanitize_schema(schema: object) -> dict:
     """
     Recursively fix a JSON schema so OpenAI accepts it as a function parameter schema.
@@ -61,7 +78,7 @@ def endpoint_to_tool(api: ApiDefinition, ep: ApiEndpoint) -> dict:
     return {
         "type": "function",
         "function": {
-            "name": _tool_name(api.id, ep.id),
+            "name": _friendly_tool_name(api, ep),
             "description": desc,
             "parameters": params,
         },
@@ -74,6 +91,10 @@ def api_to_tools(api: ApiDefinition) -> list[dict]:
 
 def resolve_tool_call(tool_name: str, db) -> tuple:
     """Return (ApiDefinition | None, ApiEndpoint | None) for a tool function name."""
+    friendly = db.query(ApiEndpoint).filter(ApiEndpoint.name == tool_name).first()
+    if friendly:
+        return friendly.definition, friendly
+
     parts = tool_name.split("_")
     if len(parts) != 3 or parts[0] != "t":
         return None, None

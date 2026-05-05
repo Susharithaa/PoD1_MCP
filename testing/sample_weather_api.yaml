@@ -23,17 +23,16 @@ paths:
                   service:
                     type: string
 
-  /weather:
+  /weather/{city}:
     get:
       summary: Get sample weather
       operationId: getWeather
       parameters:
         - name: city
-          in: query
-          required: false
+          in: path
+          required: true
           schema:
             type: string
-            default: Chennai
           description: City name to get sample weather for.
       responses:
         "200":
@@ -87,6 +86,65 @@ paths:
                           type: number
                         low_c:
                           type: number
+
+  /summary/{city}:
+    get:
+      summary: Get sample weather summary
+      operationId: getWeatherSummary
+      parameters:
+        - name: city
+          in: path
+          required: true
+          schema:
+            type: string
+          description: City name to get a short recommendation for.
+      responses:
+        "200":
+          description: Weather summary response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  city:
+                    type: string
+                  summary:
+                    type: string
+                  recommendation:
+                    type: string
+
+  /chat:
+    post:
+      summary: Chat with Azure OpenAI
+      operationId: chatWithAzureOpenAI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: Prompt to send to Azure OpenAI.
+      responses:
+        "200":
+          description: Chat completion response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  model:
+                    type: string
+                  message:
+                    type: string
+                  response:
+                    type: string
 
   /reports:
     post:

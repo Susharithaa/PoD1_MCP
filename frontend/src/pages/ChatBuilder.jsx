@@ -154,14 +154,22 @@ export default function ChatBuilder() {
         </p>
       </div>
 
-      <div className="card p-4 mb-4">
-        <p className="eyebrow">Sample API</p>
-        <p className="text-sm text-[var(--muted)] mt-2">
-          Run the demo FastAPI app in <span className="font-mono">testing/sample_fastapi_app.py</span> with
-          <span className="font-mono"> uvicorn testing.sample_fastapi_app:app --reload --port 9001</span>,
-          then use <span className="font-mono">http://localhost:9001</span> as the Base URL and add the sample endpoints.
-        </p>
-      </div>
+        <div className="card p-4 mb-4">
+          <p className="eyebrow">Sample API</p>
+          <p className="text-sm text-[var(--muted)] mt-2">
+            Run the demo FastAPI app in <span className="font-mono">testing/sample_fastapi_app.py</span> with
+            <span className="font-mono"> uvicorn testing.sample_fastapi_app:app --reload --port 9001</span>,
+            then use <span className="font-mono">http://localhost:9001</span> as the Base URL and add the sample endpoints.
+            The demo now also includes <span className="font-mono">POST /chat</span> for Azure OpenAI-backed chat testing.
+          </p>
+          <p className="text-sm text-[var(--muted)] mt-2">
+            If you want the chat panel to use Azure OpenAI, set
+            <span className="font-mono"> AZURE_OPENAI_API_KEY</span>,
+            <span className="font-mono"> AZURE_OPENAI_ENDPOINT</span>,
+            <span className="font-mono"> AZURE_OPENAI_API_VERSION</span>, and
+            <span className="font-mono"> AZURE_OPENAI_DEPLOYMENT</span> in <span className="font-mono">backend/.env</span>.
+          </p>
+        </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
