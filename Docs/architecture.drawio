@@ -1,58 +1,525 @@
 <mxfile host="app.diagrams.net" modified="2026-05-05T00:00:00.000Z" agent="Codex" version="24.7.17">
-  <diagram id="pod1-mcp-architecture" name="PoD1_MCP Architecture">
-    <mxGraphModel dx="1320" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+  <diagram id="mcp-hub-azure-system-components" name="Azure System Component Architecture">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="title" value="PoD1_MCP - MCP / Draw.io Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
-          <mxGeometry x="184" y="30" width="800" height="40" as="geometry"/>
+
+        <mxCell id="title" value="MCP Hub - Azure System Component Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1;fontColor=#111827;" vertex="1" parent="1">
+          <mxGeometry x="420" y="20" width="960" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="actor" value="Developer / Codex" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;fontColor=#1f2937;strokeColor=#374151;" vertex="1" parent="1">
-          <mxGeometry x="70" y="145" width="80" height="120" as="geometry"/>
+        <mxCell id="subtitle" value="FastAPI backend, React/Vite frontend, Azure OpenAI, PostgreSQL, Key Vault, guarded tool execution, observability, CI/CD, and optional VM operations path" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="380" y="62" width="1040" height="28" as="geometry"/>
         </mxCell>
-        <mxCell id="workspace" value="Project Workspace&#xa;PoD1_MCP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#475569;fontSize=16;fontStyle=1;fontColor=#0f172a;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="240" y="110" width="700" height="520" as="geometry"/>
+
+        <mxCell id="external-zone" value="External Users, Clients, and APIs" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#f8fafc;strokeColor=#94a3b8;fontSize=14;fontStyle=1;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="260" height="910" as="geometry"/>
         </mxCell>
-        <mxCell id="readme" value="README.md&#xa;Project identity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#0891b2;fontSize=14;fontColor=#164e63;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="295" y="175" width="180" height="80" as="geometry"/>
+        <mxCell id="edge-zone" value="Edge and Public Entry" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#eff6ff;strokeColor=#2563eb;fontSize=14;fontStyle=1;fontColor=#1e3a8a;" vertex="1" parent="1">
+          <mxGeometry x="330" y="110" width="250" height="910" as="geometry"/>
         </mxCell>
-        <mxCell id="config" value=".mcp.json&#xa;mcpServers.drawio" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef2ff;strokeColor=#4f46e5;fontSize=14;fontStyle=1;fontColor=#312e81;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="295" y="325" width="180" height="90" as="geometry"/>
+        <mxCell id="app-zone" value="Application Runtime - Azure Container Apps Environment" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#ecfdf5;strokeColor=#059669;fontSize=14;fontStyle=1;fontColor=#064e3b;" vertex="1" parent="1">
+          <mxGeometry x="610" y="110" width="420" height="910" as="geometry"/>
         </mxCell>
-        <mxCell id="command" value="Command&#xa;npx" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef9c3;strokeColor=#ca8a04;fontSize=14;fontColor=#713f12;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="545" y="300" width="150" height="70" as="geometry"/>
+        <mxCell id="data-zone" value="Data, Secrets, and AI Services" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="110" width="390" height="910" as="geometry"/>
         </mxCell>
-        <mxCell id="args" value="Args&#xa;@drawio/mcp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef9c3;strokeColor=#ca8a04;fontSize=14;fontColor=#713f12;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="545" y="395" width="150" height="70" as="geometry"/>
+        <mxCell id="ops-zone" value="Operations, Delivery, and Governance" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#f5f3ff;strokeColor=#7c3aed;fontSize=14;fontStyle=1;fontColor=#4c1d95;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="280" height="910" as="geometry"/>
         </mxCell>
-        <mxCell id="server" value="Draw.io MCP Server&#xa;Diagram tooling endpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontSize=15;fontStyle=1;fontColor=#064e3b;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="750" y="335" width="150" height="90" as="geometry"/>
+
+        <mxCell id="users" value="Users / Admins&#xa;Browser access to portal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#475569;fontSize=13;fontStyle=1;fontColor=#0f172a;arcSize=8;" vertex="1" parent="external-zone">
+          <mxGeometry x="35" y="55" width="190" height="70" as="geometry"/>
         </mxCell>
-        <mxCell id="artifact" value="docs/architecture.drawio&#xa;Editable Draw.io diagram" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="1">
-          <mxGeometry x="545" y="520" width="190" height="80" as="geometry"/>
+        <mxCell id="llm-clients" value="ChatGPT / MCP Clients&#xa;Tool discovery and calls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#475569;fontSize=13;fontStyle=1;fontColor=#0f172a;arcSize=8;" vertex="1" parent="external-zone">
+          <mxGeometry x="35" y="165" width="190" height="74" as="geometry"/>
         </mxCell>
-        <mxCell id="future" value="Future project components&#xa;Add services, APIs, databases, and clients here as code is added" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;dashed=1;fontSize=13;fontColor=#334155;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="295" y="500" width="180" height="100" as="geometry"/>
+        <mxCell id="idp" value="Identity Providers&#xa;Google OAuth / GitHub OAuth&#xa;Future: Microsoft Entra ID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef2ff;strokeColor=#4f46e5;fontSize=12;fontColor=#312e81;arcSize=8;" vertex="1" parent="external-zone">
+          <mxGeometry x="35" y="280" width="190" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="note" value="Current repo has only README.md and MCP configuration, so this diagram documents the active MCP architecture rather than application runtime services." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffffff;strokeColor=#94a3b8;fontSize=12;fontColor=#475569;" vertex="1" parent="1">
-          <mxGeometry x="760" y="500" width="140" height="100" as="geometry"/>
+        <mxCell id="third-party" value="Registered Third-party APIs&#xa;Weather, Books, SerpApi, enterprise APIs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fefce8;strokeColor=#ca8a04;fontSize=12;fontStyle=1;fontColor=#713f12;arcSize=8;" vertex="1" parent="external-zone">
+          <mxGeometry x="35" y="620" width="190" height="88" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-actor-workspace" value="works in" style="endArrow=block;html=1;rounded=0;strokeColor=#475569;fontSize=12;fontColor=#475569;" edge="1" parent="1" source="actor" target="workspace">
+        <mxCell id="smtp" value="Email Provider&#xa;SMTP / Azure Communication Services&#xa;OTP delivery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;fontSize=12;fontColor=#831843;arcSize=8;" vertex="1" parent="external-zone">
+          <mxGeometry x="35" y="745" width="190" height="86" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="frontdoor" value="Azure Front Door + WAF&#xa;TLS termination, global routing, WAF rules, rate protection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=13;fontStyle=1;fontColor=#1e3a8a;arcSize=8;" vertex="1" parent="edge-zone">
+          <mxGeometry x="30" y="55" width="190" height="88" as="geometry"/>
+        </mxCell>
+        <mxCell id="staticweb" value="Azure Static Web Apps&#xa;React/Vite SPA&#xa;frontend/dist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontSize=13;fontStyle=1;fontColor=#1e40af;arcSize=8;" vertex="1" parent="edge-zone">
+          <mxGeometry x="30" y="190" width="190" height="84" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-route" value="/api/* Route&#xa;Forwarded to backend ingress" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#60a5fa;fontSize=12;fontColor=#1d4ed8;arcSize=8;" vertex="1" parent="edge-zone">
+          <mxGeometry x="30" y="320" width="190" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="natfw" value="NAT Gateway / Azure Firewall&#xa;Controlled outbound egress&#xa;Optional domain allowlists" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;fontSize=12;fontStyle=1;fontColor=#7f1d1d;arcSize=8;" vertex="1" parent="edge-zone">
+          <mxGeometry x="30" y="610" width="190" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="private-dns" value="Private DNS Zones&#xa;Key Vault, PostgreSQL, Blob, Azure OpenAI endpoints" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#64748b;fontSize=12;fontColor=#334155;arcSize=8;" vertex="1" parent="edge-zone">
+          <mxGeometry x="30" y="750" width="190" height="84" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="container-ingress" value="Container App Ingress&#xa;FastAPI public/private API endpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#047857;fontSize=13;fontStyle=1;fontColor=#064e3b;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="30" y="55" width="170" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="managed-id" value="Managed Identity&#xa;No secrets in code&#xa;Access Key Vault / Azure resources" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#0891b2;fontSize=12;fontStyle=1;fontColor=#164e63;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="225" y="55" width="160" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="fastapi" value="FastAPI Backend Container&#xa;backend/main.py&#xa;Routers, CORS, rate limits, request context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#059669;fontSize=13;fontStyle=1;fontColor=#064e3b;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="30" y="170" width="355" height="84" as="geometry"/>
+        </mxCell>
+        <mxCell id="auth-api" value="Auth + Subscription APIs&#xa;Local auth, OTP, OAuth callbacks, JWT, admin bootstrap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="30" y="295" width="165" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="agent-api" value="Agent API Creation Pipeline&#xa;Classify, parse, schema, reconcile, confidence, HITL, validate, API test, save" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="220" y="295" width="165" height="112" as="geometry"/>
+        </mxCell>
+        <mxCell id="registry-api" value="Registry + Admin + Monitor APIs&#xa;API definitions, endpoints, audit, controls, live sessions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="30" y="430" width="165" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="chatgpt-api" value="ChatGPT / MCP Bridge&#xa;Tool list, connect, session, chat/tool-call orchestration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="220" y="430" width="165" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="tool-orch" value="Tool Orchestrator&#xa;Param validation, auth injection, SSRF guard, timeout budget, dry-run, emergency stop, masking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontSize=12;fontStyle=1;fontColor=#14532d;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="30" y="560" width="355" height="104" as="geometry"/>
+        </mxCell>
+        <mxCell id="worker" value="Optional Worker / Container Apps Job&#xa;Future async parsing, bulk validation, report generation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7fee7;strokeColor=#65a30d;dashed=1;fontSize=12;fontColor=#365314;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="30" y="705" width="170" height="88" as="geometry"/>
+        </mxCell>
+        <mxCell id="safety-controls" value="Runtime Safety Controls&#xa;READ_ONLY_MODE, DRY_RUN_TOOLS, EMERGENCY_STOP, MAX_TOOL_EXECUTION_MS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;fontSize=12;fontStyle=1;fontColor=#7f1d1d;arcSize=8;" vertex="1" parent="app-zone">
+          <mxGeometry x="220" y="705" width="165" height="88" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="postgres" value="Azure Database for PostgreSQL&#xa;Users, sessions, registry, endpoints, audit, usage, operational data" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=12;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="data-zone">
+          <mxGeometry x="35" y="55" width="150" height="104" as="geometry"/>
+        </mxCell>
+        <mxCell id="blob" value="Azure Blob Storage&#xa;Uploaded API docs, parser inputs, generated report artifacts" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fffbeb;strokeColor=#d97706;fontSize=12;fontStyle=1;fontColor=#78350f;" vertex="1" parent="data-zone">
+          <mxGeometry x="220" y="55" width="135" height="104" as="geometry"/>
+        </mxCell>
+        <mxCell id="keyvault" value="Azure Key Vault / Auth Vault&#xa;JWT secret, encryption key, OAuth secrets, SMTP credentials, OpenAI keys, endpoint credential roots" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=12;fontStyle=1;fontColor=#78350f;arcSize=8;" vertex="1" parent="data-zone">
+          <mxGeometry x="35" y="205" width="320" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="encrypted-creds" value="Encrypted Endpoint Credentials&#xa;Stored encrypted in DB; decrypted only for server-side tool execution" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#f97316;fontSize=12;fontColor=#7c2d12;arcSize=8;" vertex="1" parent="data-zone">
+          <mxGeometry x="35" y="330" width="320" height="78" as="geometry"/>
+        </mxCell>
+        <mxCell id="azure-openai" value="Azure OpenAI Service&#xa;Schema extraction, structured JSON generation, confidence/reconciliation&#xa;OpenAI API fallback supported" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7c3aed;fontSize=12;fontStyle=1;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="data-zone">
+          <mxGeometry x="35" y="455" width="320" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="appinsights" value="Application Insights&#xa;Request traces, dependency calls, latency, errors, correlation IDs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=12;fontStyle=1;fontColor=#075985;arcSize=8;" vertex="1" parent="data-zone">
+          <mxGeometry x="35" y="595" width="150" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="logs" value="Log Analytics Workspace&#xa;Structured logs, alerts, dashboards, retention" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=12;fontStyle=1;fontColor=#075985;arcSize=8;" vertex="1" parent="data-zone">
+          <mxGeometry x="205" y="595" width="150" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="redis" value="Optional Azure Cache for Redis&#xa;Future schema cache, hot sessions, queue backing" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fef2f2;strokeColor=#dc2626;dashed=1;fontSize=12;fontColor=#7f1d1d;" vertex="1" parent="data-zone">
+          <mxGeometry x="35" y="735" width="150" height="88" as="geometry"/>
+        </mxCell>
+        <mxCell id="backup" value="Backups / Lifecycle Storage&#xa;PostgreSQL PITR, Blob lifecycle, log retention policies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#64748b;fontSize=12;fontColor=#334155;arcSize=8;" vertex="1" parent="data-zone">
+          <mxGeometry x="205" y="735" width="150" height="88" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="github" value="GitHub Repository&#xa;PoD1_MCP source code" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7c3aed;fontSize=12;fontStyle=1;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="55" width="205" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="cicd" value="GitHub Actions / Azure DevOps&#xa;Build frontend, test backend, build/push image, deploy infra/app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7c3aed;fontSize=12;fontStyle=1;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="160" width="205" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="acr" value="Azure Container Registry&#xa;Backend image repository" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f3e8ff;strokeColor=#9333ea;fontSize=12;fontStyle=1;fontColor=#581c87;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="290" width="205" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="iac" value="IaC / Release Governance&#xa;Bicep/Terraform, approvals, env promotion, rollback plan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf5ff;strokeColor=#a855f7;fontSize=12;fontColor=#581c87;arcSize=8;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="405" width="205" height="86" as="geometry"/>
+        </mxCell>
+        <mxCell id="bastion-vm" value="Optional Azure Bastion + Admin VM&#xa;Break-glass DB/admin access only; no public SSH/RDP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fefce8;strokeColor=#ca8a04;fontSize=12;fontStyle=1;fontColor=#713f12;arcSize=8;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="535" width="205" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="runner-vm" value="Optional Self-hosted Runner VM&#xa;Private network deployments when hosted runners cannot reach private endpoints" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fefce8;strokeColor=#ca8a04;dashed=1;fontSize=12;fontColor=#713f12;arcSize=8;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="660" width="205" height="94" as="geometry"/>
+        </mxCell>
+        <mxCell id="alerts" value="Alerts and Dashboards&#xa;SLA breach, auth failures, tool errors, LLM cost, incident aggregation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=12;fontStyle=1;fontColor=#075985;arcSize=8;" vertex="1" parent="ops-zone">
+          <mxGeometry x="35" y="790" width="205" height="88" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#111827;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1050" width="80" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-blue" value="Public entry / frontend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;fontColor=#1e3a8a;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1080" width="150" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-green" value="Application runtime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontSize=11;fontColor=#14532d;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="215" y="1080" width="150" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-orange" value="Data / secrets / AI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=11;fontColor=#7c2d12;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1080" width="150" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-purple" value="Ops / delivery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="545" y="1080" width="150" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-red" value="Security controls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;fontSize=11;fontColor=#7f1d1d;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1080" width="150" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-dashed" value="Dashed = optional / future" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;dashed=1;fontSize=11;fontColor=#334155;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="875" y="1080" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e-users-frontdoor" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#2563eb;fontSize=11;fontColor=#1d4ed8;" edge="1" parent="1" source="users" target="frontdoor">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-config-command" value="starts" style="endArrow=block;html=1;rounded=0;strokeColor=#4f46e5;fontSize=12;fontColor=#4f46e5;" edge="1" parent="1" source="config" target="command">
+        <mxCell id="e-frontdoor-static" value="SPA assets" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#2563eb;fontSize=11;fontColor=#1d4ed8;" edge="1" parent="1" source="frontdoor" target="staticweb">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-command-server" value="executes package" style="endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=12;fontColor=#713f12;" edge="1" parent="1" source="command" target="server">
+        <mxCell id="e-frontdoor-api" value="/api/*" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#2563eb;fontSize=11;fontColor=#1d4ed8;" edge="1" parent="1" source="frontdoor" target="api-route">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-args-server" value="loads" style="endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=12;fontColor=#713f12;" edge="1" parent="1" source="args" target="server">
+        <mxCell id="e-api-ingress" value="backend HTTPS" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#059669;fontSize=11;fontColor=#047857;" edge="1" parent="1" source="api-route" target="container-ingress">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-server-artifact" value="creates / edits diagrams" style="endArrow=block;html=1;rounded=0;strokeColor=#059669;fontSize=12;fontColor=#064e3b;" edge="1" parent="1" source="server" target="artifact">
+        <mxCell id="e-ingress-fastapi" value="routes" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#059669;fontSize=11;fontColor=#047857;" edge="1" parent="1" source="container-ingress" target="fastapi">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-future-artifact" value="architecture evolves from code" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#64748b;fontSize=12;fontColor=#334155;" edge="1" parent="1" source="future" target="artifact">
+        <mxCell id="e-llm-chatgpt" value="HTTPS tool calls" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#475569;fontSize=11;fontColor=#334155;" edge="1" parent="1" source="llm-clients" target="frontdoor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="315" y="312"/>
+              <mxPoint x="315" y="190"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-idp-auth" value="OAuth redirects" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#4f46e5;fontSize=11;fontColor=#312e81;" edge="1" parent="1" source="idp" target="frontdoor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="315" y="435"/>
+              <mxPoint x="315" y="190"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-fastapi-auth" value="router" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="fastapi" target="auth-api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-fastapi-agent" value="router" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="fastapi" target="agent-api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-fastapi-registry" value="router" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="fastapi" target="registry-api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-fastapi-chatgpt" value="router" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="fastapi" target="chatgpt-api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-chatgpt-tool" value="tool calls" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#15803d;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="chatgpt-api" target="tool-orch">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-safety-tool" value="policy gates" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#dc2626;fontSize=11;fontColor=#7f1d1d;" edge="1" parent="1" source="safety-controls" target="tool-orch">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-tool-fw" value="egress" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#dc2626;fontSize=11;fontColor=#7f1d1d;" edge="1" parent="1" source="tool-orch" target="natfw">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="720"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-fw-thirdparty" value="HTTPS outbound" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=11;fontColor=#713f12;" edge="1" parent="1" source="natfw" target="third-party">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e-fastapi-postgres" value="SQLAlchemy" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#ea580c;fontSize=11;fontColor=#7c2d12;" edge="1" parent="1" source="fastapi" target="postgres">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1045" y="255"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-agent-blob" value="upload docs" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#d97706;fontSize=11;fontColor=#78350f;" edge="1" parent="1" source="agent-api" target="blob">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1045" y="405"/>
+              <mxPoint x="1045" y="255"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-fastapi-kv" value="secrets" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#d97706;fontSize=11;fontColor=#78350f;" edge="1" parent="1" source="managed-id" target="keyvault">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1045" y="203"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-kv-creds" value="credential root keys" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#f97316;fontSize=11;fontColor=#7c2d12;" edge="1" parent="1" source="keyvault" target="encrypted-creds">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-creds-tool" value="decrypt server-side only" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#f97316;fontSize=11;fontColor=#7c2d12;" edge="1" parent="1" source="encrypted-creds" target="tool-orch">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1045" y="540"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-agent-openai" value="LLM extraction / schema generation" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="agent-api" target="azure-openai">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1045" y="450"/>
+              <mxPoint x="1045" y="610"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-fastapi-appinsights" value="OTel traces" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#0284c7;fontSize=11;fontColor=#075985;" edge="1" parent="1" source="fastapi" target="appinsights">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1045" y="360"/>
+              <mxPoint x="1045" y="760"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-appinsights-logs" value="logs / metrics" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#0284c7;fontSize=11;fontColor=#075985;" edge="1" parent="1" source="appinsights" target="logs">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-alerts-logs" value="queries + alerts" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#0284c7;fontSize=11;fontColor=#075985;" edge="1" parent="1" source="logs" target="alerts">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1465" y="760"/>
+              <mxPoint x="1465" y="950"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-auth-smtp" value="OTP egress" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#db2777;fontSize=11;fontColor=#831843;" edge="1" parent="1" source="auth-api" target="natfw">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="455"/>
+              <mxPoint x="590" y="760"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-fw-smtp" value="OTP provider" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#db2777;fontSize=11;fontColor=#831843;" edge="1" parent="1" source="natfw" target="smtp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e-github-cicd" value="push / PR" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="github" target="cicd">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-cicd-acr" value="build + push image" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="cicd" target="acr">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-acr-container" value="deploy image" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="acr" target="container-ingress">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1465" y="95"/>
+              <mxPoint x="700" y="95"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-cicd-static" value="deploy SPA" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="cicd" target="staticweb">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1465" y="95"/>
+              <mxPoint x="455" y="95"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-iac-azure" value="provision / update" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#a855f7;fontSize=11;fontColor=#581c87;" edge="1" parent="1" source="iac" target="frontdoor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1465" y="95"/>
+              <mxPoint x="455" y="95"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-bastion-postgres" value="private admin path" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#ca8a04;fontSize=11;fontColor=#713f12;" edge="1" parent="1" source="bastion-vm" target="postgres">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1465" y="95"/>
+              <mxPoint x="1250" y="95"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-runner-cicd" value="private deployment runner" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#ca8a04;fontSize=11;fontColor=#713f12;" edge="1" parent="1" source="runner-vm" target="cicd">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-dns-data" value="private endpoint resolution" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#64748b;fontSize=11;fontColor=#334155;" edge="1" parent="1" source="private-dns" target="postgres">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="315" y="900"/>
+              <mxPoint x="315" y="95"/>
+              <mxPoint x="1250" y="95"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-backup-postgres" value="backup / PITR" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#64748b;fontSize=11;fontColor=#334155;" edge="1" parent="1" source="postgres" target="backup">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1465" y="220"/>
+              <mxPoint x="1465" y="875"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="mcp-hub-lower-env-current" name="Lower Environment - Current Setup">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="lower-title" value="MCP Hub - Lower Environment / Current Developer Setup" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=26;fontStyle=1;fontColor=#111827;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="lower-subtitle" value="Current repo runtime: local Vite SPA, local FastAPI/Uvicorn backend, SQLite DB, local uploads, .env secrets, mock or real OpenAI, sample API specs" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="260" y="62" width="1080" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-user-zone" value="Developer Workstation" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#f8fafc;strokeColor=#64748b;fontSize=14;fontStyle=1;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="300" height="720" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-runtime-zone" value="Local Application Runtime" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#ecfdf5;strokeColor=#059669;fontSize=14;fontStyle=1;fontColor=#064e3b;" vertex="1" parent="1">
+          <mxGeometry x="380" y="120" width="460" height="720" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-local-data-zone" value="Local Files, Database, and Configuration" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="120" width="330" height="720" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-external-zone" value="External Services Used From Lower Env" style="swimlane;html=1;startSize=28;rounded=1;arcSize=4;whiteSpace=wrap;fillColor=#eff6ff;strokeColor=#2563eb;fontSize=14;fontStyle=1;fontColor=#1e3a8a;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="120" width="300" height="720" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-dev" value="Developer / Tester&#xa;Runs app and validates flows" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#475569;fontSize=13;fontStyle=1;fontColor=#0f172a;arcSize=8;" vertex="1" parent="le-user-zone">
+          <mxGeometry x="45" y="55" width="210" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-browser" value="Browser&#xa;http://localhost:5173" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontSize=13;fontStyle=1;fontColor=#1e40af;arcSize=8;" vertex="1" parent="le-user-zone">
+          <mxGeometry x="45" y="165" width="210" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-terminal" value="Terminal Sessions&#xa;npm run dev&#xa;python run.py / uvicorn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#475569;fontSize=12;fontColor=#334155;arcSize=8;" vertex="1" parent="le-user-zone">
+          <mxGeometry x="45" y="275" width="210" height="88" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-codex" value="Codex / Editor&#xa;Code changes, docs, tests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontSize=12;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="le-user-zone">
+          <mxGeometry x="45" y="405" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-git" value="Git Working Tree&#xa;Branch: Dev&#xa;Remote: Susharithaa/PoD1_MCP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7c3aed;fontSize=12;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="le-user-zone">
+          <mxGeometry x="45" y="520" width="210" height="82" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-vite" value="Vite Dev Server&#xa;frontend/&#xa;React 18 + Tailwind&#xa;Port 5173" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=13;fontStyle=1;fontColor=#1e3a8a;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="40" y="55" width="180" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-axios" value="frontend/src/lib/api.js&#xa;Axios baseURL&#xa;http://localhost:8000&#xa;Bearer mcp_token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#60a5fa;fontSize=12;fontColor=#1d4ed8;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="245" y="55" width="180" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-fastapi" value="FastAPI / Uvicorn&#xa;backend/main.py&#xa;http://localhost:8000&#xa;/docs and /health" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontSize=13;fontStyle=1;fontColor=#14532d;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="40" y="205" width="385" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-auth" value="Auth / OTP / OAuth Routers&#xa;JWT in localStorage&#xa;Dev OTP fallback can print [DEV OTP]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="40" y="345" width="180" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-agent" value="Agent Pipeline Routers&#xa;Chat/manual/upload&#xa;HITL validate/test/save" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="245" y="345" width="180" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-registry" value="Registry / Monitor / Admin APIs&#xa;CRUD, live sessions, audit, system controls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontColor=#14532d;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="40" y="480" width="180" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-tool" value="Tool Orchestrator&#xa;SSRF protection, masking, timeout budget, dry-run/emergency stop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=12;fontStyle=1;fontColor=#14532d;arcSize=8;" vertex="1" parent="le-runtime-zone">
+          <mxGeometry x="245" y="480" width="180" height="92" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-env" value="backend/.env&#xa;APP_ENV=dev&#xa;OPENAI_API_KEY=mock&#xa;MOCK_LLM=true/false&#xa;JWT_SECRET, ENCRYPTION_KEY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=12;fontStyle=1;fontColor=#78350f;arcSize=8;" vertex="1" parent="le-local-data-zone">
+          <mxGeometry x="35" y="55" width="260" height="108" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-db" value="mcp_hub.db&#xa;Local SQLite DB&#xa;Users, sessions, registry, endpoints, audit" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=12;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="le-local-data-zone">
+          <mxGeometry x="35" y="210" width="125" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-uploads" value="uploads/ or backend/uploads/&#xa;Local uploaded docs&#xa;Ignored from git" style="shape=folder;tabWidth=50;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=12;fontColor=#7c2d12;" vertex="1" parent="le-local-data-zone">
+          <mxGeometry x="190" y="212" width="105" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-testing" value="testing/ sample files&#xa;sample_weather_api.yaml&#xa;sample_books_api.json&#xa;Swagger_test.json&#xa;Mixed_doc.txt" style="shape=folder;tabWidth=50;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fillColor=#fefce8;strokeColor=#ca8a04;fontSize=12;fontColor=#713f12;" vertex="1" parent="le-local-data-zone">
+          <mxGeometry x="35" y="365" width="260" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-alembic" value="Alembic + startup migrations&#xa;backend/alembic/&#xa;database._migrate() compatibility" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#64748b;fontSize=12;fontColor=#334155;arcSize=8;" vertex="1" parent="le-local-data-zone">
+          <mxGeometry x="35" y="520" width="260" height="84" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-ignored" value="Ignored local state&#xa;backend/.env, venv, node_modules, db, uploads, caches" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;fontSize=12;fontColor=#7f1d1d;arcSize=8;" vertex="1" parent="le-local-data-zone">
+          <mxGeometry x="35" y="650" width="260" height="76" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-openai" value="OpenAI API or Azure OpenAI&#xa;Only used when MOCK_LLM=false&#xa;Mock mode stays local" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7c3aed;fontSize=12;fontStyle=1;fontColor=#4c1d95;arcSize=8;" vertex="1" parent="le-external-zone">
+          <mxGeometry x="40" y="55" width="220" height="92" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-oauth-ext" value="Google / GitHub OAuth Apps&#xa;Optional lower-env social login callbacks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef2ff;strokeColor=#4f46e5;fontSize=12;fontColor=#312e81;arcSize=8;" vertex="1" parent="le-external-zone">
+          <mxGeometry x="40" y="195" width="220" height="82" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-email-ext" value="SMTP Provider&#xa;Optional real OTP email&#xa;Otherwise dev fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;fontSize=12;fontColor=#831843;arcSize=8;" vertex="1" parent="le-external-zone">
+          <mxGeometry x="40" y="325" width="220" height="82" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-public-api" value="Public / Test APIs&#xa;Open-Meteo or configured specs&#xa;api.example.com expected to fail reachability" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fefce8;strokeColor=#ca8a04;fontSize=12;fontStyle=1;fontColor=#713f12;arcSize=8;" vertex="1" parent="le-external-zone">
+          <mxGeometry x="40" y="455" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-no-prod" value="Not present in current lower env&#xa;No Front Door, WAF, Key Vault, Blob Storage, Container Apps, ACR, private endpoints, or VM requirement" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;fontSize=12;fontStyle=1;fontColor=#7f1d1d;arcSize=8;" vertex="1" parent="le-external-zone">
+          <mxGeometry x="40" y="595" width="220" height="106" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-note" value="Lower env security model: secrets are local .env values, endpoint credentials are encrypted by backend utilities, generated/local state is ignored by git, and mock LLM mode supports no-key testing." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffffff;strokeColor=#94a3b8;fontSize=12;fontColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="380" y="875" width="830" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="le-e-dev-browser" value="uses" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#475569;fontSize=11;fontColor=#334155;" edge="1" parent="1" source="le-dev" target="le-browser">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-terminal-vite" value="starts" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#2563eb;fontSize=11;fontColor=#1d4ed8;" edge="1" parent="1" source="le-terminal" target="le-vite">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-terminal-fastapi" value="starts" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#15803d;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="le-terminal" target="le-fastapi">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-browser-vite" value="localhost:5173" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#2563eb;fontSize=11;fontColor=#1d4ed8;" edge="1" parent="1" source="le-browser" target="le-vite">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-vite-axios" value="SPA imports API client" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#2563eb;fontSize=11;fontColor=#1d4ed8;" edge="1" parent="1" source="le-vite" target="le-axios">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-axios-fastapi" value="HTTP :8000" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#059669;fontSize=11;fontColor=#047857;" edge="1" parent="1" source="le-axios" target="le-fastapi">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-fastapi-auth" value="routes" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="le-fastapi" target="le-auth">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-fastapi-agent" value="routes" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="le-fastapi" target="le-agent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-fastapi-registry" value="routes" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="le-fastapi" target="le-registry">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-fastapi-tool" value="routes" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#16a34a;fontSize=11;fontColor=#14532d;" edge="1" parent="1" source="le-fastapi" target="le-tool">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-env-fastapi" value="settings" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#d97706;fontSize=11;fontColor=#78350f;" edge="1" parent="1" source="le-env" target="le-fastapi">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="230"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="le-e-fastapi-db" value="SQLite" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#ea580c;fontSize=11;fontColor=#7c2d12;" edge="1" parent="1" source="le-fastapi" target="le-db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-agent-uploads" value="save uploads" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#ea580c;fontSize=11;fontColor=#7c2d12;" edge="1" parent="1" source="le-agent" target="le-uploads">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-testing-agent" value="upload/test specs" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=11;fontColor=#713f12;" edge="1" parent="1" source="le-testing" target="le-agent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-migration-db" value="schema updates" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#64748b;fontSize=11;fontColor=#334155;" edge="1" parent="1" source="le-alembic" target="le-db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-agent-openai" value="optional LLM call" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="le-agent" target="le-openai">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-auth-oauth" value="optional OAuth" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#4f46e5;fontSize=11;fontColor=#312e81;" edge="1" parent="1" source="le-auth" target="le-oauth-ext">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-auth-email" value="optional SMTP" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#db2777;fontSize=11;fontColor=#831843;" edge="1" parent="1" source="le-auth" target="le-email-ext">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-tool-public-api" value="live endpoint test / tool call" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#ca8a04;fontSize=11;fontColor=#713f12;" edge="1" parent="1" source="le-tool" target="le-public-api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="le-e-codex-git" value="edits" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;endArrow=block;html=1;rounded=0;strokeColor=#7c3aed;fontSize=11;fontColor=#4c1d95;" edge="1" parent="1" source="le-codex" target="le-git">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
       </root>

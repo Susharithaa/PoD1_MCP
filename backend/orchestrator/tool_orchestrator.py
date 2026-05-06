@@ -25,7 +25,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 from models.api_definition import ApiDefinition, ApiEndpoint
-from translators.openai_translator import resolve_tool_call
+from translators.openai_translator import _friendly_tool_name, resolve_tool_call
 from utils.encryption import decrypt_creds
 from utils.masking import mask_sensitive
 from utils.observability import request_id_ctx
@@ -61,6 +61,7 @@ class ToolOrchestrator:
         tool_calls: list,
         db: Session,
         dry_run: bool = False,
+        allowed_apis: list[ApiDefinition] | None = None,
     ) -> list[ExecutionResult]:
         """
         Dispatch all tool_calls from a single GPT-4o response in parallel.
@@ -72,7 +73,13 @@ class ToolOrchestrator:
 
     # ── Internal ─────────────────────────────────────────────────────────────
 
-    async def _execute_one(self, tc: Any, db: Session, dry_run: bool = False) -> ExecutionResult:
+    async def _execute_one(
+        self,
+        tc: Any,
+        db: Session,
+        dry_run: bool = False,
+        allowed_apis: list[ApiDefinition] | None = None,
+    ) -> ExecutionResult:
         tool_name = tc.function.name
         try:
             args = json.loads(tc.function.arguments)
@@ -295,3 +302,25 @@ def _missing_params_message(ep: ApiEndpoint, missing: list[str]) -> str:
 
 # Module-level singleton
 tool_orchestrator = ToolOrchestrator()
+
+
+def resolve_tool_call_from_apis(tool_name: str, apis: list[ApiDefinition]) -> tuple[ApiDefinition | None, ApiEndpoint | None]:
+    """Resolve a tool name only within a caller-approved API collection."""
+    for api in apis:
+        for ep in api.endpoints or []:
+            if _friendly_tool_name(api, ep) == tool_name:
+                return api, ep
+
+    # Legacy fallback: t_<api_prefix>_<ep_prefix> synthetic names, still scoped
+    # to the supplied API collection.
+    parts = tool_name.split("_")
+    if len(parts) == 3 and parts[0] == "t":
+        api_prefix, ep_prefix = parts[1], parts[2]
+        for api in apis:
+            if not api.id.startswith(api_prefix):
+                continue
+            for ep in api.endpoints or []:
+                if ep.id.startswith(ep_prefix):
+                    return api, ep
+
+    return None, None

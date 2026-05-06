@@ -85,6 +85,27 @@ async def test_dry_run_executes_without_http(monkeypatch):
     assert http_call.await_count == 0
 
 
+@pytest.mark.asyncio
+async def test_tool_orchestrator_honors_allowed_api_scope():
+    class Func:
+        name = "private_forecast"
+        arguments = json.dumps({})
+
+    tc = MagicMock()
+    tc.id = "tc-private"
+    tc.function = Func()
+
+    api = MagicMock()
+    ep = MagicMock()
+    with patch("orchestrator.tool_orchestrator.resolve_tool_call", return_value=(api, ep)), \
+         patch("orchestrator.tool_orchestrator._http_call", new=AsyncMock()) as http_call:
+        result = await tool_orchestrator.execute_all([tc], MagicMock(), allowed_apis=[])
+
+    payload = json.loads(result[0].result_text)
+    assert payload["status"] == "TOOL_NOT_FOUND"
+    assert http_call.await_count == 0
+
+
 def test_expense_domain_create_list_and_info(client):
     headers = auth_headers(client)
     payload = {
@@ -151,6 +172,67 @@ def test_mcp_tools_call_application_info(client):
     )
     assert r.status_code == 200
     assert r.json()["result"]["domain"] == "expense_report_transportation_cost"
+
+
+def test_mcp_dynamic_tool_execution_is_scoped_to_current_user(client):
+    from database import SessionLocal
+    from models.api_definition import ApiDefinition, ApiEndpoint
+
+    owner_headers = auth_headers(client, "mcp-owner@test.com")
+    caller_login_headers = auth_headers(client, "mcp-caller@test.com")
+    owner = client.get("/api/auth/me", headers=owner_headers).json()
+    token_resp = client.post(
+        "/api/security/tokens",
+        json={"name": "MCP test token", "scopes": ["mcp:read"]},
+        headers=caller_login_headers,
+    )
+    assert token_resp.status_code == 201, token_resp.text
+    caller_mcp_headers = {"Authorization": f"Bearer {token_resp.json()['token']}"}
+
+    with SessionLocal() as db:
+        api = ApiDefinition(
+            id="api-owner-private",
+            name="Owner Private API",
+            base_url="https://owner.example.com",
+            user_id=owner["id"],
+        )
+        ep = ApiEndpoint(
+            id="ep-owner-private",
+            api_definition_id=api.id,
+            name="Private Forecast",
+            description="Owner-only endpoint",
+            path="/forecast",
+            method="GET",
+            input_schema={"type": "object", "properties": {}},
+        )
+        db.add(api)
+        db.add(ep)
+        db.commit()
+
+    listed = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": "list", "method": "tools/list"},
+        headers=caller_mcp_headers,
+    )
+    assert listed.status_code == 200
+    names = {tool["name"] for tool in listed.json()["result"]["tools"]}
+    assert "private_forecast" not in names
+
+    with patch("routers.mcp._http_call", new=AsyncMock(return_value=("should not run", True))) as http_call:
+        called = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": "call",
+                "method": "tools/call",
+                "params": {"name": "private_forecast", "arguments": {}},
+            },
+            headers=caller_mcp_headers,
+        )
+
+    assert called.status_code == 200
+    assert called.json()["error"]["code"] == -32601
+    assert http_call.await_count == 0
 
 
 def test_system_controls_round_trip(client):

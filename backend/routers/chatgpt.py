@@ -15,7 +15,7 @@ from database import get_db
 from utils.encryption import decrypt_creds
 from models.api_definition import ApiDefinition, ApiEndpoint
 from models.chatgpt_connection import ChatGPTConnection, ToolCallLog
-from translators.openai_translator import api_to_tools, resolve_tool_call
+from translators.openai_translator import api_to_tools
 from schemas.chatgpt import (
     ConnectResponse, ChatRequest, ChatResponse,
     StatsResponse, ToolCallRecord,
@@ -23,7 +23,7 @@ from schemas.chatgpt import (
 from utils.auth import get_current_user
 from models.user import User
 from context.context_layer import context_layer
-from orchestrator.tool_orchestrator import tool_orchestrator
+from orchestrator.tool_orchestrator import resolve_tool_call_from_apis, tool_orchestrator
 from models.token_usage import TokenUsage
 from models.chat_audit import ChatAuditLog
 
@@ -476,7 +476,7 @@ async def chat_with_tools(
         turn_additions.append(assistant_dict)
 
         # ── Orchestrator: parallel execution + retry ──────────────────────────
-        results = await tool_orchestrator.execute_all(msg.tool_calls, db, dry_run=req.dry_run)
+        results = await tool_orchestrator.execute_all(msg.tool_calls, db, dry_run=req.dry_run, allowed_apis=apis)
 
         for er in results:
             status = "SUCCESS" if er.success else "FAILED"
@@ -490,7 +490,7 @@ async def chat_with_tools(
                 er.result_text[:400], "..." if len(er.result_text) > 400 else "",
             )
             # Persist to ToolCallLog if we resolved the endpoint
-            api_obj, ep_obj = resolve_tool_call(er.tool_name, db)
+            api_obj, ep_obj = resolve_tool_call_from_apis(er.tool_name, apis)
             if api_obj:
                 db.add(ToolCallLog(
                     id=str(uuid4()),

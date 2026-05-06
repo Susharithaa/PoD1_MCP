@@ -32,11 +32,10 @@ from database import get_db
 from models.api_definition import ApiDefinition
 from models.operational import ExpenseReport, TransportationCost
 from models.user import User
-from orchestrator.tool_orchestrator import _http_call
+from orchestrator.tool_orchestrator import _http_call, resolve_tool_call_from_apis
 from translators.openai_translator import (
     _friendly_tool_name,
     _sanitize_schema,
-    resolve_tool_call,
 )
 from utils.auth import get_current_user, require_scope
 from utils.masking import mask_sensitive
@@ -233,7 +232,7 @@ async def _dispatch(method: str, params: dict, req_id: Any, db: Session, user: U
                 return _ok(req_id, {"content": _content(f"Download failed: {exc}"), "isError": True})
 
         # ── Registered API endpoint tools (dynamic) ───────────────────────────
-        api_obj, ep_obj = resolve_tool_call(tool_name, db)
+        api_obj, ep_obj = resolve_tool_call_from_apis(tool_name, apis)
         if api_obj and ep_obj:
             result_text, success = await _http_call(api_obj, ep_obj, args)
             return _ok(req_id, {

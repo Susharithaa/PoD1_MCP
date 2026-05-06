@@ -26,7 +26,7 @@ MCP Hub is a centralized API ecosystem platform that lets users define, publish,
               ▼                               ▼
        ┌─────────────┐               ┌───────────────┐
        │  ChatGPT /  │               │  3rd-party    │
-       │  Claude     │               │  APIs         │
+       │  LLM clients│               │  APIs         │
        └─────────────┘               └───────────────┘
 ```
 
@@ -34,36 +34,145 @@ MCP Hub is a centralized API ecosystem platform that lets users define, publish,
 
 ## 2. High-Level Architecture
 
-### 2.1 Deployment Architecture
+### 2.1 Current Logical Deployment Architecture
 
 ```
-                        ┌──────────────┐
-                        │   CDN/Edge   │  (Static assets, caching)
-                        └──────┬───────┘
-                               │
-                        ┌──────▼───────┐
-                        │  API Gateway │  (Rate limiting, routing, TLS termination)
-                        └──────┬───────┘
-                               │
-           ┌───────────────────┼───────────────────┐
-           ▼                   ▼                   ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐
-    │  Portal BFF  │  │  Core API    │  │  Execution       │
-    │  (Next.js)   │  │  Service     │  │  Service         │
-    └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘
-           │                 │                    │
-           └─────────────────┼────────────────────┘
-                             │
-              ┌──────────────┼───────────────┐
-              ▼              ▼               ▼
-       ┌────────────┐ ┌────────────┐ ┌─────────────┐
-       │ PostgreSQL │ │   Redis    │ │  Secrets    │
-       │ (primary)  │ │ (cache +   │ │  Manager    │
-       └────────────┘ │  queue)    │ └─────────────┘
-                      └────────────┘
+┌────────────────────┐       ┌──────────────────────────────┐
+│ React/Vite Portal  │──────▶│ FastAPI Backend              │
+│ Static SPA         │       │ - Auth + OTP/OAuth           │
+└────────────────────┘       │ - Agent API creation flow    │
+                             │ - Registry CRUD              │
+                             │ - ChatGPT/MCP integration    │
+                             │ - Tool execution proxy       │
+                             │ - Admin/monitoring APIs      │
+                             └──────────────┬───────────────┘
+                                            │
+                 ┌──────────────────────────┼──────────────────────────┐
+                 ▼                          ▼                          ▼
+        ┌────────────────┐        ┌──────────────────┐       ┌─────────────────┐
+        │ PostgreSQL     │        │ Blob/File Store  │       │ OpenAI or       │
+        │ or local SQLite│        │ Uploads/docs     │       │ Azure OpenAI    │
+        └────────────────┘        └──────────────────┘       └─────────────────┘
+                                            │
+                                            ▼
+                                  ┌──────────────────┐
+                                  │ Third-party APIs │
+                                  │ called by tools  │
+                                  └──────────────────┘
 ```
 
-### 2.2 Service Decomposition (Modular Monolith → Microservices)
+The checked-in code is currently a modular monolith. The frontend is a React/Vite SPA, and the backend is a single FastAPI application with SQLAlchemy models, routers, the agent pipeline, and runtime tool execution in one deployable service.
+
+### 2.2 Required Azure Target Architecture
+
+For an Azure deployment, use managed PaaS services first. The application does not currently require Kubernetes or a split microservice deployment.
+
+```
+Users / Admins
+      │
+      ▼
+┌──────────────────────────────┐
+│ Azure Front Door + WAF        │
+│ TLS, global entry, WAF rules  │
+└───────────────┬──────────────┘
+                │
+        ┌───────┴────────┐
+        ▼                ▼
+┌────────────────┐  ┌────────────────────────────┐
+│ Static Web App │  │ Azure Container Apps        │
+│ React/Vite SPA │  │ FastAPI backend container   │
+└────────────────┘  │ uvicorn/gunicorn workers    │
+                    └──────────────┬─────────────┘
+                                   │ Managed Identity
+          ┌────────────────────────┼─────────────────────────┐
+          ▼                        ▼                         ▼
+┌──────────────────┐     ┌──────────────────┐      ┌──────────────────┐
+│ Azure Database   │     │ Azure Key Vault  │      │ Azure Blob       │
+│ for PostgreSQL   │     │ secrets/keys     │      │ uploads/docs     │
+│ Flexible Server  │     └──────────────────┘      └──────────────────┘
+└──────────────────┘
+          │                        │                         │
+          └──────────────┬─────────┴──────────────┬──────────┘
+                         ▼                        ▼
+               ┌──────────────────┐     ┌────────────────────┐
+               │ Azure OpenAI     │     │ App Insights /     │
+               │ or OpenAI API    │     │ Log Analytics      │
+               └──────────────────┘     └────────────────────┘
+                         │
+                         ▼
+               ┌──────────────────┐
+               │ Third-party APIs │
+               │ via controlled   │
+               │ outbound egress  │
+               └──────────────────┘
+```
+
+#### Azure services needed
+
+| Need | Azure service | Why it is needed |
+|---|---|---|
+| SPA hosting | Azure Static Web Apps or Azure Storage Static Website + CDN | Hosts the built `frontend/dist` assets. Static Web Apps is simpler for app routing and TLS. |
+| API runtime | Azure Container Apps | Runs the FastAPI backend container with autoscaling and managed identity without AKS overhead. |
+| Container images | Azure Container Registry | Stores backend container images for Container Apps deployments. |
+| Database | Azure Database for PostgreSQL Flexible Server | Production replacement for local SQLite; supports relational registry/session/auth data. |
+| Uploaded documents | Azure Blob Storage | Durable storage for uploaded API docs instead of local `./uploads`. |
+| Secrets | Azure Key Vault | Stores JWT secret, encryption key, SMTP credentials, OAuth secrets, OpenAI/Azure OpenAI keys, and future endpoint credential roots. |
+| LLM | Azure OpenAI Service, with OpenAI API as fallback | The code already has Azure OpenAI settings and OpenAI mock mode for local testing. |
+| Edge and security | Azure Front Door with WAF | Public TLS endpoint, WAF protection, routing to SPA/API, and optional global acceleration. |
+| Observability | Application Insights + Log Analytics | Receives OpenTelemetry traces, app logs, request metrics, and operational dashboards. |
+| Networking | VNet integration, Private Endpoints, NAT Gateway or Azure Firewall | Keeps database, storage, Key Vault, and Azure OpenAI private where possible and gives tool execution controlled egress. |
+| CI/CD | GitHub Actions or Azure DevOps | Builds frontend, builds/pushes backend image, applies migrations, deploys infrastructure and app versions. |
+
+#### Minimum production resource groups
+
+- `rg-mcp-hub-network` - VNet, private DNS zones, NAT/Firewall, Front Door profile if managed centrally.
+- `rg-mcp-hub-app-prod` - Static Web App, Container App Environment, backend Container App, ACR, managed identities.
+- `rg-mcp-hub-data-prod` - PostgreSQL Flexible Server, Blob Storage account, Key Vault.
+- `rg-mcp-hub-observability-prod` - Log Analytics workspace, Application Insights, alerts and dashboards.
+
+For a proof of concept, these can be collapsed into one resource group. For production, keep app, data, and network concerns separate to simplify RBAC and lifecycle management.
+
+#### Azure network flow
+
+1. Browser loads the React SPA from Azure Static Web Apps through Azure Front Door.
+2. SPA calls the FastAPI backend at `/api/*` through Front Door or directly through the Container App ingress.
+3. Container Apps uses managed identity to read Key Vault secrets and connect to Azure resources.
+4. Backend reads/writes registry, users, sessions, audit, and usage data in Azure Database for PostgreSQL.
+5. Backend stores uploaded documents in Blob Storage. Local `UPLOAD_DIR=./uploads` is acceptable only for local development.
+6. Agent pipeline calls Azure OpenAI or OpenAI based on environment settings.
+7. Tool execution calls registered third-party APIs through controlled outbound egress. Keep SSRF protections enabled and consider domain allowlists for production.
+8. Logs, traces, metrics, and failures flow into Application Insights and Log Analytics.
+
+#### Production configuration mapping
+
+| Current setting | Azure production value |
+|---|---|
+| `APP_ENV` | `prod` |
+| `DATABASE_URL` | PostgreSQL connection string from Azure Database for PostgreSQL, preferably injected from Key Vault. |
+| `UPLOAD_DIR` | Replace local path usage with Blob Storage-backed upload implementation before production scale. |
+| `CORS_ORIGINS` | Static Web App / Front Door production URL. |
+| `JWT_SECRET` | Key Vault secret. |
+| `ENCRYPTION_KEY` | Key Vault secret; rotate through a planned credential migration process. |
+| `AZURE_OPENAI_API_KEY` | Key Vault secret, or use managed identity if the client implementation is upgraded. |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI resource endpoint. |
+| `AZURE_OPENAI_DEPLOYMENT` | Deployment name for the selected chat model. |
+| `SMTP_USER`, `SMTP_PASSWORD` | Key Vault secrets, or replace with Azure Communication Services Email. |
+| `OTEL_ENABLED` | `true` with Application Insights exporter configuration. |
+| `ALLOW_PRIVATE_TOOL_HOSTS` | `false` for internet-facing production. |
+| `ALLOW_INSECURE_SSL` | `false` for all shared environments. |
+| `EMERGENCY_STOP` | Operational kill switch, controlled by admin process. |
+| `DRY_RUN_TOOLS` | `false` in production; `true` in demos where live external calls are not allowed. |
+
+#### Azure deployment phases
+
+| Phase | Azure architecture | Scope |
+|---|---|---|
+| PoC | Static Web Apps + Container Apps + local/dev SQLite or small PostgreSQL + Key Vault | Prove frontend/backend flow, auth, upload, mock LLM, and registry. |
+| Pilot | Container Apps + PostgreSQL Flexible Server + Blob Storage + Azure OpenAI + Application Insights | Production-like data durability, real LLM calls, upload persistence, observability. |
+| Production | Front Door WAF + private endpoints + NAT/Firewall + autoscaling + backup/restore + CI/CD gates | Security hardening, controlled egress, HA, backups, alerts, release governance. |
+| Enterprise | Multi-region Front Door, zone-redundant PostgreSQL, read replica, Azure API Management, Microsoft Entra ID SSO | Higher availability, enterprise auth, formal API gateway policies, tenant controls. |
+
+### 2.3 Service Decomposition (Modular Monolith → Microservices)
 
 Start as a **modular monolith** in Phase 1–2, extract to microservices in Phase 3–4.
 
@@ -71,9 +180,9 @@ Start as a **modular monolith** in Phase 1–2, extract to microservices in Phas
 |---|---|---|
 | `registry` | CRUD for API definitions | Monolith |
 | `schema` | Schema validation, translation, AI suggestions | Monolith → Phase 2 |
-| `execution` | Proxy requests to real APIs | Phase 2 |
-| `auth-vault` | Store and inject credentials | Phase 3 |
-| `ai-assist` | LLM-powered schema/description generation | Phase 2 |
+| `execution` | Proxy requests to real APIs through guarded outbound egress | Phase 2 |
+| `auth-vault` | Store and inject credentials through encrypted storage and Key Vault-backed roots | Phase 3 |
+| `ai-assist` | LLM-powered schema/description generation with OpenAI or Azure OpenAI | Phase 2 |
 | `marketplace` | Discovery, search, ratings | Phase 3 |
 | `analytics` | Usage tracking, metrics | Phase 3 |
 | `mcp-bridge` | MCP protocol adapter for LLM clients | Phase 1 |
@@ -133,12 +242,13 @@ Input:  ApiDefinition (internal format)
                │
        ┌───────┴────────┐
        ▼                ▼
-  OpenAI Tools      Anthropic Tools
-  Format            Format (MCP)
+  OpenAI Tools      MCP-style Tools
+  Format            Internal Format
 ```
 
-- Supports pluggable adapters: `OpenAIAdapter`, `AnthropicAdapter`, `GenericMCPAdapter`
-- Caches translated schemas in Redis (invalidated on API update)
+- Current implementation includes OpenAI tool translation in `backend/translators/openai_translator.py`
+- Future adapters can be added for other MCP clients when needed
+- Schema caching can be added with Azure Cache for Redis if registry read load requires it
 - AI-assisted description enhancement via AI Assist Layer
 
 ---
@@ -174,8 +284,8 @@ LLM Tool Call Request
 ```
 
 **Key constraints:**
-- Hard timeout: 30s per execution
-- Retry: 2 attempts with exponential backoff (network errors only)
+- Current hard timeout: 5s per execution, additionally bounded by `MAX_TOOL_EXECUTION_MS`
+- Current retry count: 0; retries can be enabled later once idempotency rules are explicit
 - Execution logs stored for debugging (TTL: 30 days)
 - Never log credential values; redact header values marked `secret: true`
 
@@ -196,8 +306,8 @@ Secure credential storage and injection.
 │  ├── OAUTH2   (client credentials)   │
 │  └── CUSTOM   (arbitrary headers)    │
 │                                      │
-│  Storage: Secrets Manager            │
-│  (AWS Secrets Manager / Vault)       │
+│  Storage: Azure Key Vault            │
+│  plus encrypted DB values            │
 │                                      │
 │  Credentials never leave the vault   │
 │  — only injected at execution time   │
@@ -234,8 +344,8 @@ Capabilities:
     Output: plain-English cause + fix suggestion
 ```
 
-- Uses Claude (claude-sonnet-4-6) via Anthropic SDK with prompt caching
-- Structured outputs enforced via tool use / response format constraints
+- Uses OpenAI-compatible chat calls; Azure OpenAI is supported through environment configuration
+- Structured JSON outputs enforced through response format constraints where available
 - Rate-limited per workspace to control costs
 
 ---
@@ -245,7 +355,7 @@ Capabilities:
 Adapter that exposes the MCP Hub as an MCP server to LLM clients.
 
 ```
-LLM Client (ChatGPT / Claude)
+LLM Client (ChatGPT / MCP client)
         │  MCP Protocol
         ▼
 ┌─────────────────────────────┐
@@ -290,7 +400,7 @@ api_endpoints (
 -- Auth
 auth_configs (
   id, workspace_id, name, type,
-  secret_ref  -- pointer to Secrets Manager, never raw value
+  secret_ref  -- pointer to Key Vault or encrypted credential reference, never raw value
 )
 
 -- Execution logs
@@ -374,7 +484,7 @@ POST   /mcp/:session_id                  # JSON-RPC request handler
 │      (RLS policies in Postgres)                 │
 │                                                 │
 │  Layer 4: Credential Security                   │
-│  ├── Secrets stored in Secrets Manager only     │
+│  ├── Secrets stored in Azure Key Vault          │
 │  ├── Never logged or returned in responses      │
 │  └── Audit trail on every access               │
 │                                                 │
@@ -392,19 +502,19 @@ POST   /mcp/:session_id                  # JSON-RPC request handler
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| Frontend | Next.js 14 (App Router) | SSR, API routes as BFF |
-| Backend API | Node.js + Fastify | Low overhead, schema validation built-in |
-| Language | TypeScript | Type safety across stack |
-| Database | PostgreSQL 16 | JSONB for schemas, RLS for tenant isolation |
-| Cache / Queue | Redis (Upstash or self-hosted) | Sessions, schema cache, job queue |
-| Job Queue | BullMQ (on Redis) | Async execution, retries |
-| Secret Storage | AWS Secrets Manager (or HashiCorp Vault) | Credential security |
-| AI | Anthropic SDK (claude-sonnet-4-6) | Schema suggestions, descriptions |
-| Auth | Auth0 or Clerk | OAuth2 SSO, JWT management |
+| Frontend | React 18 + Vite + Tailwind | Current checked-in SPA stack |
+| Backend API | FastAPI + Uvicorn | Current checked-in backend stack |
+| Language | Python 3.11+ and JavaScript | Matches backend and frontend code |
+| Database | SQLite for local dev; PostgreSQL for production | SQLAlchemy supports both; production should use managed PostgreSQL |
+| Cache / Queue | Optional Azure Cache for Redis | Not required by current code; useful for future schema/session cache and async jobs |
+| Job Queue | Future: Azure Container Apps jobs, Azure Functions, or Redis-backed workers | Current code runs synchronously inside FastAPI |
+| Secret Storage | Azure Key Vault | Production storage for app secrets and credential roots |
+| AI | OpenAI API or Azure OpenAI Service | Current code has OpenAI client and Azure OpenAI configuration |
+| Auth | Local auth + OTP, Google/GitHub OAuth, future Microsoft Entra ID | Matches current code and Azure enterprise path |
 | Search | Postgres full-text (→ Typesense in Phase 3) | Marketplace discovery |
-| Infra | AWS (ECS Fargate + RDS + ElastiCache) | Managed, scalable |
-| CI/CD | GitHub Actions | Standard |
-| Observability | OpenTelemetry → Grafana/Datadog | Traces, metrics, logs |
+| Infra | Azure Static Web Apps, Azure Container Apps, Azure Database for PostgreSQL, Blob Storage, Key Vault | Managed Azure PaaS deployment |
+| CI/CD | GitHub Actions or Azure DevOps | Standard Azure deployment paths |
+| Observability | OpenTelemetry → Application Insights + Log Analytics | Traces, metrics, logs |
 
 ---
 
@@ -414,13 +524,13 @@ POST   /mcp/:session_id                  # JSON-RPC request handler
 
 ```
 Components built:
-- Portal (Next.js) with API creation wizard
-- Core API service (monolith)
-- API Registry (Postgres)
-- Basic MCP Bridge (manual attach)
-- Auth (JWT + workspace API keys)
+- Portal (React/Vite) with API creation flows
+- Core API service (FastAPI modular monolith)
+- API Registry (SQLAlchemy models, SQLite locally, PostgreSQL in production)
+- Basic MCP/ChatGPT bridge and tool registry
+- Auth (local auth, OTP, OAuth hooks, JWT)
 
-Infra: Single ECS service + RDS + Redis
+Azure infra: Static Web Apps + Container Apps + PostgreSQL Flexible Server + Key Vault
 ```
 
 ### Phase 2 (Weeks 6–12): Intelligence
@@ -430,11 +540,11 @@ New components:
 - AI Assist service (schema suggestions, descriptions)
 - Execution Engine (proxy with auth injection)
 - Test Console (real API calls from browser)
-- Schema Translator (OpenAI + Anthropic adapters)
+- Schema Translator (OpenAI tools now, other adapters later)
 - Execution logs
 
-Infra: Extract Execution Engine to separate ECS service
-       Add BullMQ for async execution
+Azure infra: Keep execution in Container Apps initially.
+       Add Azure Cache for Redis or a worker pattern only when async load requires it.
 ```
 
 ### Phase 3 (Weeks 12–18): Marketplace
@@ -444,10 +554,10 @@ New components:
 - Marketplace search (Typesense)
 - Auto API triggering (Execution Engine → MCP streaming)
 - Analytics service
-- Auth Vault (Secrets Manager integration)
+- Auth Vault (Azure Key Vault integration)
 - OAuth2 flow for user-facing OAuth APIs
 
-Infra: Add CDN (CloudFront), add read replica for analytics
+Azure infra: Add Front Door WAF, private endpoints, controlled egress, and read replica for analytics if needed
 ```
 
 ### Phase 4 (Weeks 18+): Scale & Monetization
@@ -471,18 +581,19 @@ New components:
 | JSONB for schemas | Postgres JSONB | Document DB (Mongo) | Avoid polyglot DB; JSONB is flexible enough and queryable |
 | Proxy-based execution | Server-side proxy | Client-side fetch | Credential security: secrets never reach the browser |
 | MCP over HTTP+SSE | Yes | WebSocket | MCP spec uses SSE; simpler firewall/proxy compatibility |
-| Prompt caching (Anthropic) | Yes | No caching | Reduces AI Assist latency and cost for repeated schema patterns |
+| Azure PaaS first | Yes | AKS from day 1 | Container Apps, Static Web Apps, managed PostgreSQL, and Key Vault match current scale with less platform overhead |
+| LLM provider | OpenAI-compatible client with Azure OpenAI support | Single hard-coded provider | Lets local/mock, OpenAI, and Azure OpenAI deployments share the same app shape |
 | Tenant isolation via RLS | Postgres RLS | App-level filtering | Defense in depth; SQL injection can't bypass RLS |
 
 ---
 
 ## 10. Scalability Considerations
 
-- **Registry reads** are read-heavy → cached in Redis, CDN-cacheable for public APIs
-- **Execution Engine** is stateless → horizontal scaling via ECS auto-scaling
-- **AI Assist** calls are bursty → queue-backed with BullMQ, rate-limited per workspace
-- **MCP sessions** are lightweight (metadata only) → stored in Redis with TTL
-- **Execution logs** are write-heavy → partitioned Postgres table by month, archived to S3 after 30 days
+- **Registry reads** are read-heavy → cache through Azure Cache for Redis when read load grows
+- **Execution Engine** is stateless → horizontal scaling through Azure Container Apps replicas
+- **AI Assist** calls are bursty → move long-running or high-volume parsing to Azure Container Apps jobs, Azure Functions, or a queue-backed worker when needed
+- **MCP sessions** are lightweight metadata → keep in PostgreSQL initially; move hot/session TTL data to Redis if latency requires it
+- **Execution logs** are write-heavy → keep operational summaries in PostgreSQL and export long-term logs to Log Analytics or Blob lifecycle storage
 
 ---
 
