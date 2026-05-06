@@ -238,7 +238,7 @@ export default function ChatGPTHub() {
           {filtered.length === 0 ? (
             <div className="card p-10 text-center">
               <p className="text-zinc-500 text-sm">{t("No APIs in registry yet.")}</p>
-              <p className="text-zinc-600 text-xs mt-1">{t("Create one via Chat Builder or Doc Upload.")}</p>
+              <p className="text-zinc-600 text-xs mt-1">{t("Create one via API Builder or Doc Upload.")}</p>
             </div>
           ) : (
             <div className="space-y-2 pb-2">
@@ -248,6 +248,51 @@ export default function ChatGPTHub() {
               ))}
             </div>
           )}
+
+          {/* MCP Server Connection Info */}
+          <div className="mt-5 card overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">MCP Server</p>
+                <p className="text-xs text-zinc-600 mt-0.5">Connect external clients (Codex CLI, Claude Desktop)</p>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">LIVE</span>
+            </div>
+            <div className="px-4 py-3 space-y-3">
+              <div>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Server URL</p>
+                <code className="text-xs font-mono text-zinc-300 bg-zinc-900 px-2 py-1 rounded block select-all">
+                  http://localhost:8000/mcp
+                </code>
+              </div>
+              <div>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Auth — API Token (required)</p>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Go to <span className="text-zinc-300 font-medium">Security → API Tokens</span>, create a token with scope <code className="text-emerald-400">mcp:read</code>, then use it as a Bearer token.
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Codex CLI</p>
+                <code className="text-[11px] font-mono text-zinc-300 bg-zinc-900 px-2 py-1.5 rounded block leading-relaxed select-all">
+                  {`mcp add --name mcp-hub --transport http http://localhost:8000/mcp \\\n  --header "Authorization: Bearer <your_token>"`}
+                </code>
+              </div>
+              <div>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Verify Connection</p>
+                <code className="text-[11px] font-mono text-zinc-300 bg-zinc-900 px-2 py-1.5 rounded block leading-relaxed select-all">
+                  {`curl -X POST http://localhost:8000/mcp \\\n  -H "Authorization: Bearer <token>" \\\n  -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'`}
+                </code>
+              </div>
+              <a
+                href="http://localhost:8000/mcp/info"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                View server info →
+              </a>
+            </div>
+          </div>
 
           {/* Chat History */}
           <div className="mt-5 card overflow-hidden">

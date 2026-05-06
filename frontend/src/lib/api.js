@@ -103,12 +103,13 @@ export const registryApi = {
 };
 
 export const monitorApi = {
-  overview:   () => http.get("/api/monitor/overview").then(r => r.data),
-  active:     () => http.get("/api/monitor/active").then(r => r.data),
-  sessions:   (limit = 30) => http.get(`/api/monitor/sessions?limit=${limit}`).then(r => r.data),
-  toolCalls:  (limit = 30) => http.get(`/api/monitor/tool-calls?limit=${limit}`).then(r => r.data),
-  audit:      (limit = 50) => http.get(`/api/monitor/audit?limit=${limit}`).then(r => r.data),
-  pipeline:   () => http.get("/api/monitor/pipeline").then(r => r.data),
+  overview:       () => http.get("/api/monitor/overview").then(r => r.data),
+  active:         () => http.get("/api/monitor/active").then(r => r.data),
+  sessions:       (limit = 30) => http.get(`/api/monitor/sessions?limit=${limit}`).then(r => r.data),
+  toolCalls:      (limit = 30) => http.get(`/api/monitor/tool-calls?limit=${limit}`).then(r => r.data),
+  audit:          (limit = 50) => http.get(`/api/monitor/audit?limit=${limit}`).then(r => r.data),
+  pipeline:       () => http.get("/api/monitor/pipeline").then(r => r.data),
+  apiToolCalls:   (apiId, limit = 20) => http.get(`/api/monitor/api-tool-calls/${apiId}?limit=${limit}`).then(r => r.data),
 };
 
 export const subscriptionApi = {

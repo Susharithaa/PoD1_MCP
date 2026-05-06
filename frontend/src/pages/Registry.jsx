@@ -34,7 +34,7 @@ export default function Registry() {
           <p className="lead mt-2">{apis.length} {t("APIs registered")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/create/chat" className="btn btn-secondary btn-sm">{t("Chat Builder")}</Link>
+          <Link to="/create/chat" className="btn btn-secondary btn-sm">{t("API Builder")}</Link>
           <Link to="/create/upload" className="btn btn-primary btn-sm">{t("Doc Upload")}</Link>
         </div>
       </div>
@@ -54,8 +54,8 @@ export default function Registry() {
           <EmptyState
             icon="◫"
             title={t("No APIs yet")}
-            description={t("Create your first API using Chat Builder or Document Upload.")}
-            action={<div className="flex gap-2"><Link to="/create/chat" className="btn btn-secondary btn-sm">{t("Chat Builder")}</Link><Link to="/create/upload" className="btn btn-primary btn-sm">{t("Doc Upload")}</Link></div>}
+            description={t("Create your first API using API Builder or Document Upload.")}
+            action={<div className="flex gap-2"><Link to="/create/chat" className="btn btn-secondary btn-sm">{t("API Builder")}</Link><Link to="/create/upload" className="btn btn-primary btn-sm">{t("Doc Upload")}</Link></div>}
           />
         ) : (
           <EmptyState icon="⊘" title={t("No results")} description={`"${search}"`} />

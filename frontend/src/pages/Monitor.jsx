@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { monitorApi } from "../lib/api";
 import { useLanguage } from "../context/LanguageContext";
 
+const METHOD_COLOR = {
+  GET:    "bg-blue-100 text-blue-700",
+  POST:   "bg-green-100 text-green-700",
+  PUT:    "bg-amber-100 text-amber-700",
+  PATCH:  "bg-purple-100 text-purple-700",
+  DELETE: "bg-red-100 text-red-700",
+};
+
 const REFRESH_MS = 5000;
 
 const STATE_COLOR = {
@@ -23,19 +31,22 @@ export default function Monitor() {
   const [sessions,         setSessions]         = useState([]);
   const [toolCalls,        setToolCalls]        = useState([]);
   const [selectedSession,  setSelectedSession]  = useState(null);
+  const [sessionToolCalls, setSessionToolCalls] = useState([]);
   const [lastRefresh,      setLastRefresh]      = useState(null);
   const [loading,          setLoading]          = useState(true);
-  const [activeTab,        setActiveTab]        = useState("prompt"); // prompt | response | meta
 
   const refresh = useCallback(async () => {
     try {
       const [ov, ac, se, tc] = await Promise.all([
-        monitorApi.overview(),
-        monitorApi.active(),
-        monitorApi.sessions(30),
-        monitorApi.toolCalls(30),
+        monitorApi.overview().catch(() => null),
+        monitorApi.active().catch(() => []),
+        monitorApi.sessions(30).catch(() => []),
+        monitorApi.toolCalls(30).catch(() => []),
       ]);
-      setOverview(ov); setActive(ac); setSessions(se.filter(s => s.state === "SAVED")); setToolCalls(tc);
+      if (ov) setOverview(ov);
+      setActive(ac);
+      setSessions(se.filter(s => s.state === "SAVED"));
+      setToolCalls(tc);
       setLastRefresh(new Date());
     } finally {
       setLoading(false);
@@ -49,8 +60,11 @@ export default function Monitor() {
   }, [refresh]);
 
   function selectSession(s) {
-    setSelectedSession(s);
-    setActiveTab("prompt");
+    setSelectedSession(prev => prev?.id === s.id ? null : s);
+    setSessionToolCalls([]);
+    if (s.api_definition_id) {
+      monitorApi.apiToolCalls(s.api_definition_id).then(setSessionToolCalls).catch(() => {});
+    }
   }
 
   return (
@@ -157,6 +171,11 @@ export default function Monitor() {
               {(c.user_name || c.user_email) && (
                 <p className="text-[10px] text-[var(--muted-2)] mt-0.5">
                   called by {c.user_name || c.user_email}
+                  {c.user_role && (
+                    <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-[var(--surface-2)] text-[var(--muted)]">
+                      {c.user_role}
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -177,7 +196,7 @@ export default function Monitor() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-[var(--line)] bg-[var(--panel)]">
-                {["Session ID", "Created By", "Mode", "State", "API Name", "Prompt", "Duration", "Created"].map(h => (
+                {["Session ID", "Created By", "Mode", "State", "API Name", "Test Result", "Prompt", "Duration", "Created"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left font-semibold text-[10px] uppercase tracking-[0.18em] text-[var(--muted-2)] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -191,8 +210,15 @@ export default function Monitor() {
                 >
                   <td className="px-4 py-3 font-mono text-[var(--muted)]">{s.id.slice(0, 8)}…</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-[var(--ink)] truncate max-w-[160px]">{s.user_name || "—"}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-[var(--ink)] truncate max-w-[130px]">{s.user_name || "—"}</span>
+                        {s.user_role && (
+                          <span className="px-1 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 shrink-0">
+                            {s.user_role}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-[var(--muted)] truncate max-w-[160px]">{s.user_email}</span>
                     </div>
                   </td>
@@ -200,7 +226,26 @@ export default function Monitor() {
                   <td className="px-4 py-3">
                     <span className={`font-mono ${STATE_COLOR[s.state] || "text-[var(--muted)]"}`}>{s.state}</span>
                   </td>
-                  <td className="px-4 py-3 font-medium max-w-[160px] truncate">{s.api_name || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium truncate max-w-[130px]">{s.api_name || "—"}</span>
+                      {s.endpoints?.length > 0 && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[var(--surface-2)] text-[var(--muted)]">
+                          {s.endpoints.length} tool{s.endpoints.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {s.test_verdict && s.test_verdict !== "NONE" ? (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${
+                        s.test_verdict === "PASS"        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                        s.test_verdict === "UNREACHABLE" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                        s.test_verdict === "WARNING"     ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                        "bg-[var(--surface-2)] text-[var(--muted)]"
+                      }`}>{s.test_verdict}</span>
+                    ) : <span className="text-[var(--muted)]">—</span>}
+                  </td>
                   <td className="px-4 py-3 max-w-[220px] truncate text-[var(--muted)]">{s.prompt || "—"}</td>
                   <td className="px-4 py-3 tabular-nums text-[var(--muted)]">{fmtDuration(s.duration_ms)}</td>
                   <td className="px-4 py-3 text-[var(--muted)] whitespace-nowrap">{s.created_time || timeAgo(s.created_at)}</td>
@@ -211,81 +256,136 @@ export default function Monitor() {
         </div>
       </div>
 
-      {/* Selected session detail */}
+      {/* Selected session detail — tabless, all sections visible */}
       {selectedSession && (
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden space-y-0">
+
+          {/* Header */}
           <div className="px-5 py-4 border-b border-[var(--line)] flex items-center justify-between">
             <div>
               <p className="eyebrow">Session Detail</p>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs text-[var(--muted)] font-mono">{selectedSession.id.slice(0, 8)}…</span>
-                {selectedSession.user_name && (
-                  <span className="text-xs text-[var(--muted)]">
-                    created by <span className="font-medium text-[var(--ink)]">{selectedSession.user_name}</span>
-                    {selectedSession.user_email && ` (${selectedSession.user_email})`}
-                  </span>
-                )}
-                {selectedSession.api_name && (
-                  <span className="text-xs text-[var(--muted)]">
-                    · API: <span className="font-medium text-[var(--ink)]">{selectedSession.api_name}</span>
-                  </span>
-                )}
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="font-mono text-xs text-[var(--muted)]">{selectedSession.id.slice(0, 8)}…</span>
+                <span className="text-[var(--muted)]">·</span>
+                <span className="text-xs font-medium text-[var(--ink)]">{selectedSession.api_name || "—"}</span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase ${STATE_COLOR[selectedSession.state] || "text-[var(--muted)]"} bg-[var(--panel)] border border-[var(--line)]`}>{selectedSession.state}</span>
+                <span className="text-[var(--muted)]">·</span>
+                <span className="text-xs text-[var(--muted)]">{selectedSession.mode}</span>
+                <span className="text-[var(--muted)]">·</span>
+                <span className="text-xs text-[var(--muted)]">{fmtDuration(selectedSession.duration_ms)}</span>
+                <span className="text-[var(--muted)]">·</span>
+                <span className="text-xs text-[var(--muted)]">{timeAgo(selectedSession.created_at)}</span>
               </div>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedSession(null)}>Clear</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedSession(null)}>Close</button>
           </div>
 
-          {/* Tabs */}
-          <div className="flex border-b border-[var(--line)] px-5">
-            {[["prompt","Prompt"],["response","Response"],["meta","Metadata"]].map(([id,label]) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={`text-xs font-medium py-3 px-4 border-b-2 transition-colors -mb-px ${
-                  activeTab === id
-                    ? "border-[var(--ink)] text-[var(--ink)]"
-                    : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <div className="p-5 space-y-6">
 
-          <div className="p-5">
-            {activeTab === "prompt" && (
-              <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 min-h-[80px]">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {selectedSession.message || selectedSession.prompt || <span className="text-[var(--muted)]">—</span>}
-                </p>
-              </div>
-            )}
-            {activeTab === "response" && (
-              <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 min-h-[80px]">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {selectedSession.response || <span className="text-[var(--muted)]">—</span>}
-                </p>
-              </div>
-            )}
-            {activeTab === "meta" && (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {[
-                  ["Session ID",  selectedSession.id],
-                  ["Created By",  selectedSession.user_name || "—"],
-                  ["Email",       selectedSession.user_email || "—"],
-                  ["Mode",        selectedSession.mode || "—"],
-                  ["State",       selectedSession.state],
-                  ["API Name",    selectedSession.api_name || "—"],
-                  ["Duration",    fmtDuration(selectedSession.duration_ms)],
-                  ["Created",     selectedSession.created_time || timeAgo(selectedSession.created_at)],
-                ].map(([label, val]) => (
-                  <div key={label} className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-3">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted-2)] mb-1">{label}</p>
-                    <p className="text-xs font-medium truncate">{val}</p>
+            {/* Who created it */}
+            <div>
+              <p className="eyebrow mb-3">Created By</p>
+              <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
+                <div className="w-8 h-8 rounded-full bg-[var(--surface-2)] flex items-center justify-center text-xs font-bold text-[var(--muted)]">
+                  {(selectedSession.user_name || "?")[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-[var(--ink)]">{selectedSession.user_name || "—"}</span>
+                    {selectedSession.user_role && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700">
+                        {selectedSession.user_role}
+                      </span>
+                    )}
+                    {selectedSession.test_verdict && selectedSession.test_verdict !== "NONE" && (
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                        selectedSession.test_verdict === "PASS"        ? "bg-green-100 text-green-700" :
+                        selectedSession.test_verdict === "UNREACHABLE" ? "bg-red-100 text-red-700" :
+                        "bg-amber-100 text-amber-700"
+                      }`}>Test: {selectedSession.test_verdict}</span>
+                    )}
                   </div>
-                ))}
+                  <p className="text-xs text-[var(--muted)]">{selectedSession.user_email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Registered MCP Tools (endpoints) */}
+            <div>
+              <p className="eyebrow mb-3">Registered MCP Tools ({selectedSession.endpoints?.length || 0})</p>
+              {(!selectedSession.endpoints || selectedSession.endpoints.length === 0) ? (
+                <p className="text-xs text-[var(--muted)]">No endpoints registered in this session.</p>
+              ) : (
+                <div className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] overflow-hidden">
+                  {selectedSession.endpoints.map((ep, i) => (
+                    <div key={i} className="flex items-start gap-3 px-4 py-3 bg-[var(--panel)]">
+                      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono mt-0.5 ${METHOD_COLOR[ep.method] || "bg-[var(--surface-2)] text-[var(--muted)]"}`}>
+                        {ep.method}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold font-mono text-[var(--ink)]">{ep.path}</p>
+                          {ep.name && ep.name !== ep.path && (
+                            <span className="text-[10px] text-[var(--muted)] truncate">· {ep.name}</span>
+                          )}
+                        </div>
+                        {ep.description && <p className="text-[11px] text-[var(--muted)] mt-0.5">{ep.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Live tool call history for this API */}
+            <div>
+              <p className="eyebrow mb-3">Tool Call History ({sessionToolCalls.length})</p>
+              {sessionToolCalls.length === 0 ? (
+                <p className="text-xs text-[var(--muted)]">No tool calls recorded yet for this API.</p>
+              ) : (
+                <div className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] overflow-hidden">
+                  {sessionToolCalls.map(tc => (
+                    <div key={tc.id} className="px-4 py-3 bg-[var(--panel)]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded ${tc.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                              {tc.success ? "OK" : "FAIL"}
+                            </span>
+                            <span className="text-xs font-mono font-medium text-[var(--ink)]">{tc.endpoint_name}</span>
+                            {tc.user_name && (
+                              <span className="text-[10px] text-[var(--muted)]">
+                                by {tc.user_name}
+                                {tc.user_role && (
+                                  <span className="ml-1 px-1 py-0.5 rounded text-[9px] font-semibold uppercase bg-[var(--surface-2)] text-[var(--muted)]">{tc.user_role}</span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          {tc.result_preview && (
+                            <p className="text-[10px] text-[var(--muted)] mt-1 font-mono truncate max-w-[500px]">{tc.result_preview}</p>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-[var(--muted-2)] whitespace-nowrap shrink-0">
+                          {new Date(tc.called_at).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Source prompt */}
+            {selectedSession.prompt && (
+              <div>
+                <p className="eyebrow mb-3">Source</p>
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">{selectedSession.raw_input || selectedSession.prompt}</p>
+                </div>
               </div>
             )}
+
           </div>
         </div>
       )}

@@ -1,0 +1,161 @@
+openapi: 3.0.3
+info:
+  title: DuckDuckGo Instant Answer API
+  version: 1.0.0
+  description: >-
+    Free, zero-signup search API powered by DuckDuckGo Instant Answers.
+    Returns instant answer summaries, related topics, and external links
+    for any query — no API key required.
+
+    **Tips for ChatGPT usage:**
+    - Always pass format=json and no_html=1 for clean structured output.
+    - Use skip_disambig=1 to get the top result directly.
+    - The `AbstractText` field contains the main summary; `RelatedTopics` gives
+      related sub-topics each with a `Text` and `FirstURL`.
+
+    Source: https://duckduckgo.com/api
+
+servers:
+  - url: https://api.duckduckgo.com
+    description: DuckDuckGo public Instant Answer API (no auth required)
+
+paths:
+  /:
+    get:
+      operationId: instantAnswer
+      summary: Get instant answer and related topics for a search query
+      description: >-
+        Queries DuckDuckGo's Instant Answer engine and returns a structured
+        JSON response containing a summary abstract, related topics, and
+        external links. Ideal for quick fact lookups, definitions, and
+        topic overviews.
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The search query.
+          example: "Chennai weather"
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, xml]
+            default: json
+          description: Response format. Always use json.
+        - name: no_html
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 1
+          description: Strip HTML from text fields. Use 1 for clean output.
+        - name: skip_disambig
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 1
+          description: Skip disambiguation pages and return the top result directly.
+        - name: kl
+          in: query
+          required: false
+          schema:
+            type: string
+            default: wt-wt
+          description: >-
+            Region/language for results.
+            Examples: us-en (USA English), gb-en (UK), in-en (India), jp-ja (Japan).
+          example: in-en
+      responses:
+        "200":
+          description: Instant answer response for the query.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstantAnswerResponse"
+
+components:
+  schemas:
+    InstantAnswerResponse:
+      type: object
+      properties:
+        Heading:
+          type: string
+          description: Title of the result topic.
+        AbstractText:
+          type: string
+          description: >-
+            Main summary text for the topic. Empty string if no instant answer
+            is available (check RelatedTopics instead).
+        AbstractSource:
+          type: string
+          description: Source of the abstract (e.g. Wikipedia).
+        AbstractURL:
+          type: string
+          description: URL to the full article on the source.
+        Image:
+          type: string
+          description: URL of a representative image, if available.
+        Type:
+          type: string
+          description: >-
+            Result type: A (article), D (disambiguation), C (category),
+            N (name), E (exclusive), "" (no result).
+        RelatedTopics:
+          type: array
+          description: Related subtopics or search suggestions.
+          items:
+            type: object
+            properties:
+              Text:
+                type: string
+                description: Short description of the related topic.
+              FirstURL:
+                type: string
+                description: DuckDuckGo URL for the related topic.
+              Icon:
+                type: object
+                properties:
+                  URL:
+                    type: string
+                  Height:
+                    type: string
+                  Width:
+                    type: string
+        Results:
+          type: array
+          description: Direct result links (e.g. official site).
+          items:
+            type: object
+            properties:
+              Text:
+                type: string
+              FirstURL:
+                type: string
+        Answer:
+          type: string
+          description: Direct one-line answer for simple queries (e.g. "What is 2+2").
+        AnswerType:
+          type: string
+          description: Category of the direct answer (e.g. calc, color, ip).
+        Definition:
+          type: string
+          description: Dictionary definition for single-word queries.
+        DefinitionSource:
+          type: string
+          description: Source of the definition.
+        DefinitionURL:
+          type: string
+          description: URL to the full definition entry.
+        Entity:
+          type: string
+          description: Entity type (e.g. film, actor, city).
+        Infobox:
+          type: object
+          description: Structured key-value facts about the topic (when available).

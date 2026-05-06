@@ -2,7 +2,7 @@ const en = {
   // Navigation
   "Overview": "Overview",
   "API Registry": "API Registry",
-  "Chat Builder": "Chat Builder",
+  "API Builder": "API Builder",
   "Doc Upload": "Doc Upload",
   "ChatGPT Tools": "ChatGPT Tools",
   "Monitor": "Monitor",
@@ -34,7 +34,7 @@ const en = {
   "1 API registered": "1 API registered",
   "Search by name, URL, or description…": "Search by name, URL, or description…",
   "No APIs yet": "No APIs yet",
-  "Create your first API using the Chat Builder or Document Upload.": "Create your first API using the Chat Builder or Document Upload.",
+  "Create your first API using the API Builder or Document Upload.": "Create your first API using the API Builder or Document Upload.",
   "No results": "No results",
   "Just saved": "Just saved",
   "Version": "Version",
@@ -44,8 +44,7 @@ const en = {
   "Copy ID": "Copy ID",
   "Delete": "Delete",
 
-  // Chat Builder
-  "API Builder": "API Builder",
+  // API Builder
   "Define your API endpoints. MCP Hub will register them as callable tools.": "Define your API endpoints. MCP Hub will register them as callable tools.",
   "API Overview": "API Overview",
   "API Name": "API Name",
@@ -118,7 +117,7 @@ const en = {
   "Connect an API first…": "Connect an API first…",
   "Ask a question…": "Ask a question…",
   "No APIs in registry yet.": "No APIs in registry yet.",
-  "Create one via Chat Builder or Doc Upload.": "Create one via Chat Builder or Doc Upload.",
+  "Create one via API Builder or Doc Upload.": "Create one via API Builder or Doc Upload.",
   "Arguments": "Arguments",
   "Result": "Result",
 

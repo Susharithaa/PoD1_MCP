@@ -204,11 +204,22 @@ def recent_sessions(
             "test_verdict": _test_summary(s.api_test_results),
             "user_email":   user.email or "—",
             "user_name":    user.full_name or user.email or "—",
+            "user_role":    user.role if user else None,
             "prompt":       _session_prompt(s)[0],
             "raw_input":    _session_prompt(s)[1][:180],
             "created_at":   s.created_at.isoformat(),
             "duration_ms":  int((s.updated_at - s.created_at).total_seconds() * 1000),
             "error":        (s.error_log or [{}])[-1].get("error") if s.state == "FAILED" else None,
+            "api_definition_id": s.api_definition_id,
+            "endpoints":    [
+                {
+                    "method":      ep.get("method", "GET"),
+                    "path":        ep.get("path", ""),
+                    "name":        ep.get("name") or ep.get("operationId") or ep.get("path", ""),
+                    "description": ep.get("description", ""),
+                }
+                for ep in ((s.final_api or s.draft_api or {}).get("endpoints") or [])
+            ],
         }
         for s, user in rows
     ]
@@ -224,8 +235,9 @@ def tool_call_log(
 ):
     user_api_ids = _visible_api_ids(db, current_user)
     rows = (
-        db.query(ToolCallLog, ApiDefinition)
+        db.query(ToolCallLog, ApiDefinition, User)
         .join(ApiDefinition, ToolCallLog.api_definition_id == ApiDefinition.id, isouter=True)
+        .join(User, ToolCallLog.user_id == User.id, isouter=True)
         .filter(ToolCallLog.api_definition_id.in_(user_api_ids))
         .order_by(desc(ToolCallLog.called_at))
         .limit(limit)
@@ -240,8 +252,44 @@ def tool_call_log(
             "result_preview": (log.result or "")[:120],
             "success":        log.success,
             "called_at":      log.called_at.isoformat(),
+            "user_name":      (user.full_name or user.email) if user else None,
+            "user_email":     user.email if user else None,
+            "user_role":      user.role if user else None,
         }
-        for log, api in rows
+        for log, api, user in rows
+    ]
+
+
+# ── Tool call history for a specific API definition ──────────────────────────
+
+@router.get("/api-tool-calls/{api_definition_id}")
+def api_tool_calls(
+    api_definition_id: str,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = (
+        db.query(ToolCallLog, User)
+        .join(User, ToolCallLog.user_id == User.id, isouter=True)
+        .filter(ToolCallLog.api_definition_id == api_definition_id)
+        .order_by(desc(ToolCallLog.called_at))
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id":             log.id,
+            "endpoint_name":  log.endpoint_name,
+            "arguments":      log.arguments,
+            "result_preview": (log.result or "")[:200],
+            "success":        log.success,
+            "called_at":      log.called_at.isoformat(),
+            "user_name":      (user.full_name or user.email) if user else None,
+            "user_email":     user.email if user else None,
+            "user_role":      user.role if user else None,
+        }
+        for log, user in rows
     ]
 
 

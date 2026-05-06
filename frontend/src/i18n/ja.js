@@ -2,7 +2,7 @@ const ja = {
   // Navigation
   "Overview": "概要",
   "API Registry": "APIレジストリ",
-  "Chat Builder": "チャットビルダー",
+  "API Builder": "チャットビルダー",
   "Doc Upload": "ドキュメント",
   "ChatGPT Tools": "ChatGPTツール",
   "Monitor": "モニター",
@@ -34,7 +34,7 @@ const ja = {
   "1 API registered": "1件のAPIが登録済み",
   "Search by name, URL, or description…": "名前・URL・説明で検索…",
   "No APIs yet": "APIがありません",
-  "Create your first API using the Chat Builder or Document Upload.": "チャットビルダーまたはドキュメントアップロードから最初のAPIを作成してください",
+  "Create your first API using the API Builder or Document Upload.": "チャットビルダーまたはドキュメントアップロードから最初のAPIを作成してください",
   "No results": "結果なし",
   "Just saved": "保存完了",
   "Version": "バージョン",
@@ -44,7 +44,7 @@ const ja = {
   "Copy ID": "IDをコピー",
   "Delete": "削除",
 
-  // Chat Builder
+  // API Builder
   "API Builder": "APIビルダー",
   "Define your API endpoints. MCP Hub will register them as callable tools.": "APIエンドポイントを定義してください。MCPハブが呼び出し可能なツールとして登録します。",
   "API Overview": "API概要",
@@ -118,7 +118,7 @@ const ja = {
   "Connect an API first…": "APIを接続してください…",
   "Ask a question…": "質問を入力…",
   "No APIs in registry yet.": "レジストリにAPIがありません",
-  "Create one via Chat Builder or Doc Upload.": "チャットビルダーまたはドキュメントアップロードから作成してください",
+  "Create one via API Builder or Doc Upload.": "チャットビルダーまたはドキュメントアップロードから作成してください",
   "Arguments": "引数",
   "Result": "結果",
 

@@ -25,6 +25,7 @@ class ToolCallLog(Base):
     api_definition_id: Mapped[str] = mapped_column(
         String, ForeignKey("api_definitions.id", ondelete="CASCADE")
     )
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     endpoint_name: Mapped[str] = mapped_column(String)
     arguments: Mapped[str] = mapped_column(Text, default="{}")
     result: Mapped[str] = mapped_column(Text, default="")

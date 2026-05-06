@@ -103,3 +103,9 @@ def _migrate():
         session_cols = {c["name"] for c in inspector.get_columns("agent_sessions")}
         if "coverage_report" not in session_cols:
             _add_col("agent_sessions", "coverage_report", "TEXT")
+
+    # tool_call_logs
+    if "tool_call_logs" in tables:
+        tcl_cols = {c["name"] for c in inspector.get_columns("tool_call_logs")}
+        if "user_id" not in tcl_cols:
+            _add_col("tool_call_logs", "user_id", "TEXT")

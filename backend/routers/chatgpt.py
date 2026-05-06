@@ -403,6 +403,7 @@ async def chat_with_tools(
                 db.add(ToolCallLog(
                     id=str(uuid4()),
                     api_definition_id=api_obj.id,
+                    user_id=current_user.id,
                     endpoint_name=er.endpoint,
                     arguments=json.dumps(er.arguments),
                     result=er.result_text[:1000],

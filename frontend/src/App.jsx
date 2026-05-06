@@ -17,7 +17,7 @@ const NAV_SECTIONS = [
   {
     headingKey: "Create",
     items: [
-      { to: "/create/chat",   labelKey: "Chat Builder", icon: ChatIcon },
+      { to: "/create/chat",   labelKey: "API Builder", icon: ChatIcon },
       { to: "/create/upload", labelKey: "Doc Upload",   icon: UploadIcon },
     ],
   },

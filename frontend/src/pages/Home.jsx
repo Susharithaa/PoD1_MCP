@@ -44,7 +44,7 @@ export default function Home() {
           <div className="grid gap-3 mt-6 sm:grid-cols-2">
             <QuickAction
               to="/create/chat"
-              label={t("Chat Builder")}
+              label={t("API Builder")}
               desc={t("Describe your API in plain language.")}
               accent="var(--info)"
             />
