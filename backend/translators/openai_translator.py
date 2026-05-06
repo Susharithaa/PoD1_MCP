@@ -91,17 +91,20 @@ def api_to_tools(api: ApiDefinition) -> list[dict]:
 
 def resolve_tool_call(tool_name: str, db) -> tuple:
     """Return (ApiDefinition | None, ApiEndpoint | None) for a tool function name."""
-    friendly = db.query(ApiEndpoint).filter(ApiEndpoint.name == tool_name).first()
-    if friendly:
-        return friendly.definition, friendly
+    # Match by computing the friendly name for every endpoint (handles sanitized names
+    # like "get_github_user" vs stored names like "Get GitHub User").
+    for ep in db.query(ApiEndpoint).all():
+        api = ep.definition
+        if api and _friendly_tool_name(api, ep) == tool_name:
+            return api, ep
 
+    # Legacy fallback: t_<api_prefix>_<ep_prefix> synthetic names
     parts = tool_name.split("_")
-    if len(parts) != 3 or parts[0] != "t":
-        return None, None
-    api_prefix, ep_prefix = parts[1], parts[2]
+    if len(parts) == 3 and parts[0] == "t":
+        api_prefix, ep_prefix = parts[1], parts[2]
+        ep = db.query(ApiEndpoint).filter(ApiEndpoint.id.like(f"{ep_prefix}%")).first()
+        if ep:
+            api = db.query(ApiDefinition).filter(ApiDefinition.id.like(f"{api_prefix}%")).first()
+            return api, ep
 
-    ep = db.query(ApiEndpoint).filter(ApiEndpoint.id.like(f"{ep_prefix}%")).first()
-    if not ep:
-        return None, None
-    api = db.query(ApiDefinition).filter(ApiDefinition.id.like(f"{api_prefix}%")).first()
-    return api, ep
+    return None, None

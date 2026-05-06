@@ -190,6 +190,55 @@ def get_session_info(
     return info
 
 
+@router.get("/sessions")
+def list_chat_sessions(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return one summary row per chat session for the current user,
+    ordered most-recent first.  Only sessions produced by chatgpt/chat
+    are included (stored in ChatAuditLog) — pipeline/upload sessions
+    are never shown here.
+    """
+    from sqlalchemy import func
+
+    # Latest row per session owned by this user
+    latest_ts = (
+        db.query(
+            ChatAuditLog.session_id,
+            func.max(ChatAuditLog.created_at).label("last_at"),
+        )
+        .filter(ChatAuditLog.user_id == current_user.id)
+        .group_by(ChatAuditLog.session_id)
+        .order_by(func.max(ChatAuditLog.created_at).desc())
+        .limit(limit)
+        .subquery()
+    )
+
+    rows = (
+        db.query(ChatAuditLog)
+        .join(latest_ts, (ChatAuditLog.session_id == latest_ts.c.session_id) &
+                          (ChatAuditLog.created_at == latest_ts.c.last_at))
+        .order_by(ChatAuditLog.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "session_id":  r.session_id,
+            "user_name":   r.user_name,
+            "user_email":  r.user_email,
+            "message":     r.message,
+            "response":    r.response,
+            "model":       r.model,
+            "created_at":  r.created_at.isoformat(),
+        }
+        for r in rows
+    ]
+
+
 @router.delete("/session/{session_id}")
 def clear_session(
     session_id: str,

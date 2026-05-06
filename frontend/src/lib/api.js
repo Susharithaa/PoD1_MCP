@@ -122,14 +122,15 @@ export const subscriptionApi = {
 };
 
 export const chatgptApi = {
-  getStats:    ()      => http.get("/api/chatgpt/stats").then((r) => r.data),
-  getRegistry: ()      => http.get("/api/chatgpt/registry").then((r) => r.data),
-  connect:     (id)    => http.post(`/api/chatgpt/connect/${id}`).then((r) => r.data),
-  disconnect:  (id)    => http.delete(`/api/chatgpt/disconnect/${id}`).then((r) => r.data),
-  getSession:  (id)    => http.get(`/api/chatgpt/session/${id}`).then((r) => r.data),
-  clearSession:(id)    => http.delete(`/api/chatgpt/session/${id}`).then((r) => r.data),
-  getTools:    (id)    => http.get(`/api/chatgpt/tools/${id}`).then((r) => r.data),
-  chat:        (message, api_ids = [], session_id = null, dry_run = false) =>
+  getStats:     ()             => http.get("/api/chatgpt/stats").then((r) => r.data),
+  getRegistry:  ()             => http.get("/api/chatgpt/registry").then((r) => r.data),
+  listSessions: (limit = 20)   => http.get(`/api/chatgpt/sessions?limit=${limit}`).then((r) => r.data),
+  connect:      (id)           => http.post(`/api/chatgpt/connect/${id}`).then((r) => r.data),
+  disconnect:   (id)           => http.delete(`/api/chatgpt/disconnect/${id}`).then((r) => r.data),
+  getSession:   (id)           => http.get(`/api/chatgpt/session/${id}`).then((r) => r.data),
+  clearSession: (id)           => http.delete(`/api/chatgpt/session/${id}`).then((r) => r.data),
+  getTools:     (id)           => http.get(`/api/chatgpt/tools/${id}`).then((r) => r.data),
+  chat:         (message, api_ids = [], session_id = null, dry_run = false) =>
     http.post("/api/chatgpt/chat", { message, api_ids, session_id, dry_run }).then((r) => r.data),
 };
 

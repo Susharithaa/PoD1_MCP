@@ -35,7 +35,7 @@ export default function Monitor() {
         monitorApi.sessions(30),
         monitorApi.toolCalls(30),
       ]);
-      setOverview(ov); setActive(ac); setSessions(se); setToolCalls(tc);
+      setOverview(ov); setActive(ac); setSessions(se.filter(s => s.state === "SAVED")); setToolCalls(tc);
       setLastRefresh(new Date());
     } finally {
       setLoading(false);

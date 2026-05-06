@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { chatgptApi, subscriptionApi, monitorApi, registryApi } from "../lib/api";
+import { chatgptApi, subscriptionApi, registryApi } from "../lib/api";
 import { PageSpinner } from "../components/Spinner";
 import Spinner from "../components/Spinner";
 import { useLanguage } from "../context/LanguageContext";
@@ -32,7 +32,7 @@ export default function ChatGPTHub() {
   const isAdmin = user?.role === "admin";
 
   async function refreshAll() {
-    const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)]);
+    const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), chatgptApi.listSessions(20)]);
     setStats(s);
     setApis(a);
     setRecentSessions(recent || []);
@@ -40,7 +40,7 @@ export default function ChatGPTHub() {
   }
 
   useEffect(() => {
-    const loads = [chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)];
+    const loads = [chatgptApi.getStats(), chatgptApi.getRegistry(), chatgptApi.listSessions(20)];
     if (!isAdmin) loads.push(subscriptionApi.getStatus());
     Promise.all(loads)
       .then(async ([s, a, recent, sub]) => {
@@ -160,7 +160,7 @@ export default function ChatGPTHub() {
           onToggleExpand={() => setExpanded(false)}
           t={t}
           onStatsRefresh={() => chatgptApi.getStats().then(setStats)}
-          onSessionsRefresh={() => monitorApi.sessions(8).then(setRecentSessions).catch(() => {})}
+          onSessionsRefresh={() => chatgptApi.listSessions(20).then(setRecentSessions).catch(() => {})}
           activeSession={activeSession}
           onSessionChange={setActiveSession}
         />
@@ -260,40 +260,50 @@ export default function ChatGPTHub() {
             </div>
             <div className="max-h-[340px] overflow-y-auto divide-y divide-zinc-800">
               {recentSessions.length === 0 ? (
-                <div className="px-4 py-4 text-xs text-zinc-500">No chat sessions yet.</div>
+                <div className="px-4 py-8 text-center text-xs text-zinc-500">
+                  No chat history yet.<br />
+                  <span className="text-zinc-700">Start a conversation above to see it here.</span>
+                </div>
               ) : (
                 recentSessions.map(session => (
                   <button
-                    key={session.id}
+                    key={session.session_id}
                     type="button"
-                    onClick={() => setActiveSession(session.id)}
+                    onClick={() => setActiveSession(session.session_id)}
                     className={`w-full text-left px-4 py-3 transition-colors hover:bg-zinc-900/60
-                                ${activeSession === session.id ? "bg-emerald-500/5" : ""}`}
+                                ${activeSession === session.session_id ? "bg-emerald-500/5 border-l-2 border-emerald-500/40" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-100 truncate">{session.api_name || "—"}</p>
-                        {(session.user_name || session.user_email) && (
-                          <p className="text-[11px] text-zinc-500 truncate mt-0.5">
-                            by {session.user_name || session.user_email}
-                            {session.user_name && session.user_email && ` · ${session.user_email}`}
-                          </p>
+                        {/* User who sent the message */}
+                        <p className="text-xs font-medium text-zinc-200 truncate">
+                          {session.user_name || session.user_email || "Unknown user"}
+                        </p>
+                        {session.user_name && session.user_email && (
+                          <p className="text-[10px] text-zinc-600 truncate">{session.user_email}</p>
                         )}
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 whitespace-nowrap flex-shrink-0">
-                        {session.state}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {session.model && session.model !== "mock" && (
+                          <span className="text-[10px] font-mono text-zinc-600">{session.model}</span>
+                        )}
+                        <span className="text-[10px] text-zinc-600">
+                          {fmtSessionAge(session.created_at)}
+                        </span>
+                      </div>
                     </div>
-                    {session.raw_input && (
-                      <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{session.raw_input}</p>
+                    {/* Last user message */}
+                    {session.message && (
+                      <p className="text-xs text-zinc-400 mt-1.5 line-clamp-2 text-left">
+                        <span className="text-zinc-600">You: </span>{session.message}
+                      </p>
                     )}
+                    {/* Last assistant response */}
                     {session.response && (
-                      <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{session.response}</p>
+                      <p className="text-xs text-zinc-500 mt-1 line-clamp-2 text-left">
+                        <span className="text-zinc-700">AI: </span>{session.response}
+                      </p>
                     )}
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-600">
-                      <span>{session.test_verdict}</span>
-                      <span>{session.created_time || fmtSessionAge(session.created_at)}</span>
-                    </div>
                   </button>
                 ))
               )}
@@ -309,7 +319,7 @@ export default function ChatGPTHub() {
             onToggleExpand={() => setExpanded(true)}
             t={t}
             onStatsRefresh={() => chatgptApi.getStats().then(setStats)}
-            onSessionsRefresh={() => monitorApi.sessions(8).then(setRecentSessions).catch(() => {})}
+            onSessionsRefresh={() => chatgptApi.listSessions(20).then(setRecentSessions).catch(() => {})}
             activeSession={activeSession}
             onSessionChange={setActiveSession}
           />
