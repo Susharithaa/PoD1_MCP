@@ -64,3 +64,4 @@ logs/
 # ── Local scratch / test scripts (may contain API keys) ──────────────────────
 test.py
 test_*.py
+!backend/tests/test_*.py

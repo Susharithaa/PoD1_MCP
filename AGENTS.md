@@ -12,8 +12,9 @@ The backend is a modular monolith: auth, subscriptions, agent sessions, registry
 
 - `backend/` - FastAPI app, SQLAlchemy models, routers, schemas, LLM/agent pipeline, tool orchestration, utilities, Alembic migrations, and tests.
 - `backend/agents/` - API creation pipeline: classify, parse, generate schema, reconcile, score confidence, validate, live-test, and save.
-- `backend/orchestrator/tool_orchestrator.py` - Runtime HTTP execution for LLM tool calls, including parameter validation, dry-run/emergency-stop checks, SSRF validation, auth injection, timeout, and masking.
+- `backend/orchestrator/tool_orchestrator.py` - Runtime HTTP execution for LLM and MCP tool calls, including scoped tool resolution, parameter validation, dry-run/emergency-stop checks, SSRF validation, auth injection, timeout, and masking.
 - `backend/routers/` - API route modules mounted by `backend/main.py`.
+- `backend/routers/mcp.py` - MCP JSON-RPC, stream, SSE, and info endpoints for tool discovery/execution.
 - `backend/utils/` - Auth, encryption, masking, safety controls, SSRF protection, migrations, observability, endpoint validation, document extraction, and email/OTP helpers.
 - `backend/alembic/` - Database migrations. Startup also runs compatibility migrations through `utils/migrations.py` and `database._migrate()`.
 - `frontend/` - React 18 + Vite + Tailwind SPA.
@@ -21,7 +22,9 @@ The backend is a modular monolith: auth, subscriptions, agent sessions, registry
 - `frontend/src/pages/` - Route-level UI pages.
 - `frontend/src/context/` - Auth, theme, language, and upload state.
 - `docs/` - Architecture, flow, product docs, generated diagrams, and images.
+- `docs/user_guide_add_mcp_tools_to_codex.md` - User guide for creating MCP tokens, adding MCP Hub to Codex, and troubleshooting discovery.
 - `testing/` - Sample API documents/specs for parser and upload testing.
+- `scripts/setup_local.sh` - Local prerequisite installer using `uv` for the backend and `npm` for the frontend.
 - `Reports/` and root `*.xlsx` / XML files - Test/report artifacts; avoid touching unless the task is report-related.
 - `run.py` - Convenience backend runner from repository root.
 
@@ -30,14 +33,30 @@ The backend is a modular monolith: auth, subscriptions, agent sessions, registry
 Backend from repository root:
 
 ```bash
-python -m venv backend/venv
+scripts/setup_local.sh
 source backend/venv/bin/activate
-pip install -r backend/requirements.txt
-cp backend/.env.example backend/.env
 python run.py
 ```
 
-Alternative backend command from `backend/`:
+The setup script requires Python 3.11+, `uv`, Node.js 18+, and `npm`. It creates `backend/venv` with `uv`, installs `backend/requirements.txt` with `uv pip`, creates `backend/.env` from the example when missing, and installs frontend dependencies.
+
+Useful setup options:
+
+```bash
+scripts/setup_local.sh --skip-frontend
+scripts/setup_local.sh --skip-backend
+scripts/setup_local.sh --reset-venv
+```
+
+Manual backend install, when the script is not appropriate:
+
+```bash
+uv venv backend/venv --python python3.13
+UV_CACHE_DIR=.uv-cache uv pip install --python backend/venv/bin/python -r backend/requirements.txt
+cp backend/.env.example backend/.env
+```
+
+Alternative backend run command from `backend/`:
 
 ```bash
 uvicorn main:app --reload
@@ -116,6 +135,7 @@ Keep these untracked:
 - `backend/venv/`, `.venv/`, and other virtualenv folders
 - `frontend/node_modules/`
 - `frontend/dist/`
+- `.uv-cache/`
 - `mcp_hub.db`, `*.sqlite`, `*.sqlite3`
 - `uploads/` and `backend/uploads/*` except `.gitkeep`
 - `_gitmeta/` and `_gitmeta_test/`
@@ -140,11 +160,15 @@ source venv/bin/activate
 python -m pytest tests -v
 ```
 
-Targeted backend test:
+Targeted MCP/RBAC and scoped execution tests:
 
 ```bash
 cd backend
-python -m pytest tests/test_tool_orchestrator.py -v
+venv/bin/python -m pytest \
+  tests/test_mcp_tools_list_rbac.py \
+  tests/test_feature_matrix.py::test_mcp_dynamic_tool_execution_is_scoped_to_current_user \
+  tests/test_feature_matrix.py::test_tool_orchestrator_honors_allowed_api_scope \
+  -v
 ```
 
 Frontend build:
@@ -168,6 +192,42 @@ There is no frontend test script in `frontend/package.json` at the time of writi
 - Manual API creation uses `/api/agent/manual`, creates a draft directly, and skips LLM review.
 - Credentials stored on endpoints or sessions should pass through `utils/encryption.py` and be masked before logging or returning diagnostic text.
 - Outbound tool execution should continue to use `utils/ssrf.py`, `utils/safety.py`, and `utils/masking.py`; do not bypass those helpers.
+
+## MCP And Codex Integration
+
+- MCP Hub exposes `POST /mcp` for JSON-RPC `initialize`, `tools/list`, `tools/call`, and `resources/list`.
+- Additional MCP transports are `POST /mcp/stream` for NDJSON streamable HTTP and `GET /mcp/sse` for SSE initialization/tool-list events.
+- `GET /mcp/info` is unauthenticated and returns connection guidance.
+- Protected MCP endpoints require Bearer auth with `mcp:read`; create long-lived API tokens from the Security page. Login JWTs are useful for local debugging but expire.
+- Codex must be configured as an HTTP MCP server, not as a stdio command:
+
+```bash
+export MCP_HUB_TOKEN="<your_mcp_token>"
+codex mcp add mcp-hub --url http://localhost:8000/mcp \
+  --bearer-token-env-var MCP_HUB_TOKEN
+```
+
+- `codex mcp list` lists configured MCP servers only; it does not list individual MCP tools.
+- Verify discovery directly with:
+
+```bash
+curl -X POST http://localhost:8000/mcp \
+  -H "Authorization: Bearer $MCP_HUB_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+- If Codex shows `Unsupported` or `transport: stdio`, remove and re-add the server using `--url` and `--bearer-token-env-var`.
+- Dynamic MCP execution and ChatGPT tool execution must be scoped to the authenticated user's visible APIs. Use `resolve_tool_call_from_apis(tool_name, apis)` or pass `allowed_apis` into `tool_orchestrator.execute_all(...)`; do not use global `resolve_tool_call(...)` for authenticated MCP/ChatGPT user execution.
+
+## Auth, Roles, And Visibility
+
+- The first registered user becomes admin unless an admin already exists.
+- `ADMIN_BOOTSTRAP_EMAILS` can also bootstrap admin assignment for configured emails.
+- Admin role can be managed through `/api/auth/admin/users/{user_id}/role`; valid roles are `user` and `admin`.
+- A regular user should only see and execute APIs they created.
+- Admins can see all registered APIs through MCP discovery and MCP execution, and admin chat paths may operate across all registered tools.
+- Token scope checks live in `utils/auth.py`; admins bypass explicit API token scope checks, but normal API tokens need `mcp:read` for MCP access.
 
 ## Frontend Notes
 

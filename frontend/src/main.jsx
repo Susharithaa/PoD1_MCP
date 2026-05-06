@@ -14,6 +14,7 @@ import ChatGPTHub    from "./pages/ChatGPTHub";
 import Monitor       from "./pages/Monitor";
 import Admin         from "./pages/Admin";
 import Expenses      from "./pages/Expenses";
+import Security      from "./pages/Security";
 import Login         from "./pages/Login";
 import Register      from "./pages/Register";
 import AuthCallback  from "./pages/AuthCallback";
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: "chatgpt",             element: <ChatGPTHub /> },
       { path: "expenses",            element: <Expenses /> },
       { path: "monitor",             element: <Monitor /> },
+      { path: "security",            element: <Security /> },
       { path: "admin",               element: <Admin /> },
     ],
   },

@@ -32,6 +32,7 @@ const NAV_SECTIONS = [
     headingKey: "System",
     items: [
       { to: "/monitor", labelKey: "Monitor", icon: MonitorIcon },
+      { to: "/security", labelKey: "Security", icon: KeyIcon },
     ],
   },
 ];
@@ -438,6 +439,14 @@ function ApiIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="shrink-0">
       <path d="M3 7.5h9M9 4l3 3.5L9 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+function KeyIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0">
+      <circle cx="5" cy="7.5" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M7.5 7.5H14M11 7.5V10M9 7.5V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   );
 }
