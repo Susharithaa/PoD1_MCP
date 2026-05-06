@@ -195,11 +195,32 @@ http://localhost:8000/mcp
 Add it to Codex:
 
 ```bash
-mcp add --name mcp-hub --transport http http://localhost:8000/mcp \
-  --header "Authorization: Bearer <your_mcp_token>"
+export MCP_HUB_TOKEN="<your_mcp_token>"
+
+codex mcp add mcp-hub --url http://localhost:8000/mcp \
+  --bearer-token-env-var MCP_HUB_TOKEN
 ```
 
 After adding it, Codex should be able to discover tools from MCP Hub.
+
+Check the server registration:
+
+```bash
+codex mcp get mcp-hub
+```
+
+It should show an HTTP/streamable URL configuration, not a stdio command with `http://localhost:8000/mcp` as the command.
+
+Verify MCP discovery directly:
+
+```bash
+curl -X POST http://localhost:8000/mcp \
+  -H "Authorization: Bearer $MCP_HUB_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+This should return the built-in hub tools and the API tools saved under the authenticated user. `codex mcp list` lists configured MCP servers; it does not list individual tools.
 
 ## 8. Test From Codex
 
@@ -281,6 +302,24 @@ Check:
 3. Confirm the endpoints are present.
 4. Retry `tools/list`.
 
+### Codex shows `Unsupported` or `transport: stdio`
+
+The server was added with the URL as a command instead of an HTTP MCP URL.
+
+Fix it by removing and re-adding the server:
+
+```bash
+codex mcp remove mcp-hub
+
+export MCP_HUB_TOKEN="<your_mcp_token>"
+codex mcp add mcp-hub --url http://localhost:8000/mcp \
+  --bearer-token-env-var MCP_HUB_TOKEN
+
+codex mcp get mcp-hub
+```
+
+The final command should show an HTTP/streamable URL configuration. Also make sure `MCP_HUB_TOKEN` is available in the shell where you run Codex.
+
 ### Tool exists but live call fails
 
 Common causes:
@@ -313,5 +352,5 @@ That host is only a placeholder. Use a real public API, or run the local sample 
 6. Confirm it appears in **API Registry**.
 7. Create an API token with `mcp:read`.
 8. Verify discovery with `curl` and `tools/list`.
-9. Add MCP Hub to Codex with `mcp add`.
+9. Add MCP Hub to Codex with `codex mcp add --url`.
 10. Ask Codex to list or call your MCP Hub tools.

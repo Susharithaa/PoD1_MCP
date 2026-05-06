@@ -274,7 +274,7 @@ export default function ChatGPTHub() {
               <div>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Codex CLI</p>
                 <code className="text-[11px] font-mono text-zinc-300 bg-zinc-900 px-2 py-1.5 rounded block leading-relaxed select-all">
-                  {`mcp add --name mcp-hub --transport http http://localhost:8000/mcp \\\n  --header "Authorization: Bearer <your_token>"`}
+                  {`export MCP_HUB_TOKEN="<your_token>"\n\ncodex mcp add mcp-hub --url http://localhost:8000/mcp \\\n  --bearer-token-env-var MCP_HUB_TOKEN`}
                 </code>
               </div>
               <div>

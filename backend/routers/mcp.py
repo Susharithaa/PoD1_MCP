@@ -14,8 +14,9 @@ Auth:
 
 Codex CLI usage:
     1. Create an API token in MCP Hub → Security with scope "mcp:read"
-    2. mcp add --name "mcp-hub" --transport http http://localhost:8000/mcp \\
-           --header "Authorization: Bearer <your_token>"
+    2. export MCP_HUB_TOKEN="<your_token>"
+    3. codex mcp add mcp-hub --url http://localhost:8000/mcp \\
+           --bearer-token-env-var MCP_HUB_TOKEN
 """
 
 import asyncio
@@ -272,8 +273,9 @@ def mcp_info():
             "then pass it as: Authorization: Bearer <token>"
         ),
         "codex_cli": (
-            "mcp add --name mcp-hub --transport http http://localhost:8000/mcp "
-            "--header \"Authorization: Bearer <your_token>\""
+            "export MCP_HUB_TOKEN='<your_token>' && "
+            "codex mcp add mcp-hub --url http://localhost:8000/mcp "
+            "--bearer-token-env-var MCP_HUB_TOKEN"
         ),
     }
 
