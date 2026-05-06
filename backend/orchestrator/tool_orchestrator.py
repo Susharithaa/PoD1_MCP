@@ -68,7 +68,10 @@ class ToolOrchestrator:
         Returns one ExecutionResult per tool_call, in original order.
         """
         logger.info("Running %d tool call(s) in parallel...", len(tool_calls))
-        tasks = [self._execute_one(tc, db, dry_run=dry_run) for tc in tool_calls]
+        tasks = [
+            self._execute_one(tc, db, dry_run=dry_run, allowed_apis=allowed_apis)
+            for tc in tool_calls
+        ]
         return list(await asyncio.gather(*tasks))
 
     # ── Internal ─────────────────────────────────────────────────────────────
@@ -86,7 +89,10 @@ class ToolOrchestrator:
         except Exception:
             args = {}
 
-        api_obj, ep_obj = resolve_tool_call(tool_name, db)
+        if allowed_apis is None:
+            api_obj, ep_obj = resolve_tool_call(tool_name, db)
+        else:
+            api_obj, ep_obj = resolve_tool_call_from_apis(tool_name, allowed_apis)
         logger.info(
             "Tool '%s' found in DB → API: %s, Endpoint: %s",
             tool_name,
