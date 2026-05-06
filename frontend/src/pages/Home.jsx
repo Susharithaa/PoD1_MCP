@@ -26,45 +26,68 @@ export default function Home() {
 
   if (loading) return <PageSpinner />;
 
-  const saved = sessions.filter(s => s.state === "SAVED").length;
+  const saved   = sessions.filter(s => s.state === "SAVED").length;
   const pending = sessions.filter(s => s.state === "HITL_PENDING").length;
+  const failed  = sessions.filter(s => s.state === "FAILED").length;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-slide-up">
-      <section className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr] items-stretch">
-        <div className="card p-6 lg:p-8 shadow-sm">
+
+      {/* ── Hero + Snapshot ─────────────────────────────────────────────── */}
+      <section className="grid gap-5 lg:grid-cols-[1.4fr_0.6fr] items-stretch">
+        <div className="card p-6 lg:p-8 shadow-sm flex flex-col">
           <p className="eyebrow">{t("Overview")}</p>
           <h1 className="h-page mt-2">{t("API and tool hub for structured onboarding")}</h1>
           <p className="lead mt-3 max-w-2xl">
             {t("Review uploads, convert docs into tools, connect APIs, and monitor the system with a calmer production-style console.")}
           </p>
-          <div className="flex flex-wrap gap-3 mt-6">
-            <Link to="/create/chat" className="btn btn-primary">{t("Chat Builder")}</Link>
-            <Link to="/create/upload" className="btn btn-secondary">{t("Doc Upload")}</Link>
-            <Link to="/registry" className="btn btn-secondary">{t("API Registry")}</Link>
+          <div className="grid gap-3 mt-6 sm:grid-cols-2">
+            <QuickAction
+              to="/create/chat"
+              label={t("Chat Builder")}
+              desc={t("Describe your API in plain language.")}
+              accent="var(--info)"
+            />
+            <QuickAction
+              to="/create/upload"
+              label={t("Doc Upload")}
+              desc={t("Parse Swagger, OpenAPI, PDF or Markdown.")}
+              accent="var(--warn)"
+            />
+          </div>
+          <div className="mt-3">
+            <Link to="/registry" className="btn btn-secondary w-full text-center">{t("Open API Registry →")}</Link>
           </div>
         </div>
-        <div className="card-flat p-6 lg:p-7 space-y-4">
+
+        <div className="card-flat p-6 space-y-4 flex flex-col">
           <div className="flex items-center justify-between">
             <div>
               <p className="eyebrow">{t("System Snapshot")}</p>
               <h2 className="h-section mt-1">{t("Current activity")}</h2>
             </div>
-            <span className="pill pill-ok"><span className="w-1.5 h-1.5 rounded-full bg-[var(--ok)]" />Live</span>
+            <span className="pill pill-ok">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--ok)]" />Live
+            </span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <MiniStat label={t("Total APIs")} value={apis.length} />
-            <MiniStat label={t("Saved")} value={saved} />
-            <MiniStat label={t("Pending")} value={pending} />
+
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStat label={t("Total APIs")}  value={apis.length}   />
+            <MiniStat label={t("Saved")}        value={saved}         color="var(--ok)" />
+            <MiniStat label={t("Pending")}      value={pending}       color="var(--warn)" />
+            <MiniStat label={t("Failed")}       value={failed}        color="var(--err)" />
           </div>
-          <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
-            <p className="text-xs text-[var(--muted-2)] uppercase tracking-[0.18em] mb-2">{t("Recent state")}</p>
+
+          <div className="flex-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 overflow-hidden">
+            <p className="text-[10px] text-[var(--muted-2)] uppercase tracking-[0.18em] mb-2">{t("Recent state")}</p>
             <div className="space-y-2">
-              {sessions.slice(0, 4).map(s => (
+              {sessions.length === 0 ? (
+                <p className="text-xs text-[var(--muted)]">{t("No sessions yet")}</p>
+              ) : sessions.slice(0, 5).map(s => (
                 <div key={s.id} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{s.id.slice(0, 8)}…</p>
-                    <p className="text-xs text-[var(--muted)]">{s.mode || "—"}</p>
+                    <p className="text-xs font-medium truncate">{s.api_name || s.id.slice(0, 8) + "…"}</p>
+                    <p className="text-[10px] text-[var(--muted)] truncate">{s.user_name || s.mode || "—"}</p>
                   </div>
                   <Badge label={STATE_LABEL[s.state] || s.state} variant={s.state} />
                 </div>
@@ -74,43 +97,45 @@ export default function Home() {
         </div>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="eyebrow">{t("Create")}</p>
-            <h2 className="h-section mt-1">{t("Start a new API flow")}</h2>
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <ActionCard
-            title={t("Chat Builder")}
-            desc={t("Describe your API in plain language and let the pipeline draft endpoints.")}
-            to="/create/chat"
-            accent="var(--info)"
-          />
-          <ActionCard
-            title={t("Document Upload")}
-            desc={t("Parse Swagger, OpenAPI, Markdown, text, or PDF documents into reviewable sessions.")}
-            to="/create/upload"
-            accent="var(--warn)"
-          />
-        </div>
-      </section>
-
+      {/* ── Recent Sessions + API Registry ──────────────────────────────── */}
       <section className="grid gap-5 lg:grid-cols-2">
+
+        {/* Recent Sessions */}
         <div className="card p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--line)]">
-            <p className="eyebrow">{t("Recent Sessions")}</p>
+          <div className="px-5 py-4 border-b border-[var(--line)] flex items-center justify-between">
+            <div>
+              <p className="eyebrow">{t("Recent Sessions")}</p>
+              <p className="text-xs text-[var(--muted)] mt-0.5">{sessions.length} total</p>
+            </div>
+            <Link to="/monitor" className="text-xs text-[var(--muted)] hover:text-[var(--ink)]">{t("Monitor →")}</Link>
           </div>
           {sessions.length === 0 ? (
-            <EmptyState text={t("No sessions yet")} />
+            <EmptyRow text={t("No sessions yet")} />
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {sessions.slice(0, 6).map(s => (
-                <Link key={s.id} to={s.state === "HITL_PENDING" ? `/validate/${s.id}` : "#"} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-[var(--hover)] transition-colors">
+                <Link
+                  key={s.id}
+                  to={s.state === "HITL_PENDING" ? `/validate/${s.id}` : "#"}
+                  className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-[var(--hover)] transition-colors"
+                >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{s.id.slice(0, 8)}…</p>
-                    <p className="text-xs text-[var(--muted)]">{s.mode || "—"}</p>
+                    <p className="text-sm font-medium truncate">
+                      {s.api_name || s.id.slice(0, 8) + "…"}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {s.user_name && (
+                        <span className="text-[10px] text-[var(--muted)] truncate">
+                          by {s.user_name}
+                        </span>
+                      )}
+                      {s.user_name && s.mode && (
+                        <span className="text-[10px] text-[var(--muted-2)]">·</span>
+                      )}
+                      {s.mode && (
+                        <span className="text-[10px] text-[var(--muted-2)]">{s.mode}</span>
+                      )}
+                    </div>
                   </div>
                   <Badge label={STATE_LABEL[s.state] || s.state} variant={s.state} />
                 </Link>
@@ -119,25 +144,49 @@ export default function Home() {
           )}
         </div>
 
+        {/* API Registry */}
         <div className="card p-0 overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--line)] flex items-center justify-between">
             <div>
               <p className="eyebrow">{t("API Registry")}</p>
+              <p className="text-xs text-[var(--muted)] mt-0.5">{apis.length} registered</p>
             </div>
             <Link to="/registry" className="text-xs text-[var(--muted)] hover:text-[var(--ink)]">{t("View all →")}</Link>
           </div>
           {apis.length === 0 ? (
-            <EmptyState text={t("No APIs saved yet")} />
+            <EmptyRow text={t("No APIs saved yet")} />
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {apis.slice(0, 6).map(api => (
-                <div key={api.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                <Link
+                  key={api.id}
+                  to={`/registry/${api.id}`}
+                  className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-[var(--hover)] transition-colors"
+                >
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{api.name}</p>
-                    {api.base_url && <p className="text-xs text-[var(--muted)] font-mono truncate mt-0.5">{api.base_url}</p>}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {api.created_by && (
+                        <span className="text-[10px] text-[var(--muted)] truncate">
+                          by {api.created_by}
+                        </span>
+                      )}
+                      {api.base_url && (
+                        <span className="text-[10px] text-[var(--muted-2)] font-mono truncate">
+                          {api.created_by ? "· " : ""}{api.base_url}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <Badge label={api.visibility} variant={api.visibility} />
-                </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {api.endpoint_count != null && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--panel)] text-[var(--muted)] font-mono">
+                        {api.endpoint_count} ep
+                      </span>
+                    )}
+                    <Badge label={api.visibility} variant={api.visibility} />
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -147,25 +196,31 @@ export default function Home() {
   );
 }
 
-function MiniStat({ label, value }) {
+function MiniStat({ label, value, color }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3">
-      <p className="text-xs text-[var(--muted-2)] uppercase tracking-[0.18em]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5">
+      <p className="text-[10px] text-[var(--muted-2)] uppercase tracking-[0.18em]">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums" style={color ? { color } : {}}>
+        {value}
+      </p>
     </div>
   );
 }
 
-function ActionCard({ title, desc, to, accent }) {
+function QuickAction({ label, desc, to, accent }) {
   return (
-    <Link to={to} className="card p-5 hover:border-[var(--ink)] transition-all block">
-      <div className="w-10 h-10 rounded-lg border" style={{ borderColor: `${accent}33`, background: `${accent}12` }} />
-      <h3 className="mt-4 text-sm font-semibold">{title}</h3>
-      <p className="lead mt-1">{desc}</p>
+    <Link to={to} className="flex items-start gap-3 rounded-xl border border-[var(--line)] p-4
+                              hover:border-[var(--ink)] hover:bg-[var(--hover)] transition-all">
+      <div className="w-8 h-8 rounded-lg flex-shrink-0 border"
+        style={{ borderColor: `${accent}33`, background: `${accent}12` }} />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs text-[var(--muted)] mt-0.5">{desc}</p>
+      </div>
     </Link>
   );
 }
 
-function EmptyState({ text }) {
+function EmptyRow({ text }) {
   return <div className="px-5 py-10 text-center text-sm text-[var(--muted)]">{text}</div>;
 }

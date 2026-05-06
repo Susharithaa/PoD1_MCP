@@ -23,6 +23,7 @@ from utils.doc_extractor import extract as doc_extract, _attempt_json_repair
 from utils.smart_chunker import chunk as smart_chunk, _find_section
 from utils.deterministic_extractor import extract as det_extract, GroundTruth
 from utils.endpoint_validator import validate_and_fix
+from agents.schema_agent import _build_from_structured
 from agents.reconciliation_agent import (
     _deduplicate, _align_auth, _normalise_names, _to_snake
 )
@@ -178,6 +179,32 @@ base_rj, chunks_rj = asyncio.get_event_loop().run_until_complete(
     smart_chunk(text_rj, "openapi_json")
 )
 check("test.json (repaired) produces chunks", len(chunks_rj) > 0, f"chunks={len(chunks_rj)}")
+
+# Yahoo Search Japan via SerpApi — structured YAML regression
+text_serp, fmt_serp = doc_extract(path("testing/yahoo_search_serpapi.yaml"))
+check("yahoo_search_serpapi.yaml detected as openapi_json", fmt_serp == "openapi_json",
+      f"fmt={fmt_serp}")
+base_serp, chunks_serp = asyncio.get_event_loop().run_until_complete(
+    smart_chunk(text_serp, "openapi_json")
+)
+check("yahoo_search_serpapi.yaml produces exactly one chunk", len(chunks_serp) == 1,
+      f"chunks={len(chunks_serp)}")
+check("yahoo_search_serpapi.yaml base_url is serpapi.com", base_serp.get("base_url") == "https://serpapi.com",
+      f"base_url={base_serp.get('base_url')}")
+check("yahoo_search_serpapi.yaml auth_type is API_KEY", base_serp.get("auth_type") == "API_KEY",
+      f"auth_type={base_serp.get('auth_type')}")
+if chunks_serp:
+    gt_serp = det_extract({"method": chunks_serp[0].method, "path": chunks_serp[0].path,
+                           "hint": chunks_serp[0].hint, "content": chunks_serp[0].content})
+    built_serp = _build_from_structured(
+        {"content": chunks_serp[0].content, "hint": chunks_serp[0].hint},
+        gt_serp,
+    )
+    props_serp = built_serp["input_schema"]["properties"]
+    check("SerpApi YAML preserves engine enum/default", props_serp["engine"].get("enum") == ["yahoo"]
+          and props_serp["engine"].get("default") == "yahoo")
+    check("SerpApi YAML preserves num bounds", props_serp["num"].get("minimum") == 1
+          and props_serp["num"].get("maximum") == 100)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -562,12 +589,13 @@ print(f"\n{'='*60}")
 print(f"  RESULTS:  {passed}/{total} passed  |  {failed} failed")
 print(f"{'='*60}\n")
 
-if failed > 0:
-    print("FAILED tests:")
-    for name, ok in results:
-        if not ok:
-            print(f"  [FAIL] {name}")
-    sys.exit(1)
-else:
-    print("All tests passed.")
-    sys.exit(0)
+if __name__ == "__main__":
+    if failed > 0:
+        print("FAILED tests:")
+        for name, ok in results:
+            if not ok:
+                print(f"  [FAIL] {name}")
+        sys.exit(1)
+    else:
+        print("All tests passed.")
+        sys.exit(0)

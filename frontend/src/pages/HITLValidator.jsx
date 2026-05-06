@@ -337,6 +337,7 @@ export default function HITLValidator() {
   const isFailed    = session?.state === "FAILED";
   const isManual    = session?.mode === "MANUAL";
   const testResults = localTestResults;
+  const extraction  = session?.extracted_schema || {};
   const hasTestIssues = session?.state === "HITL_PENDING" &&
     testResults.some(r => r.verdict === "UNREACHABLE" || r.verdict === "WARNING");
 
@@ -360,6 +361,33 @@ export default function HITLValidator() {
           <Badge label={session?.state} variant={session?.state} />
         </div>
       </div>
+
+      {/* Parser debug summary */}
+      <div className="mb-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="card p-3">
+          <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Detected Format</p>
+          <p className="text-sm font-mono text-zinc-200">{extraction._fmt || "unknown"}</p>
+        </div>
+        <div className="card p-3">
+          <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Base URL</p>
+          <p className="text-sm font-mono text-zinc-200 truncate">{extraction.base_url || "none"}</p>
+        </div>
+        <div className="card p-3">
+          <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Chunk Count</p>
+          <p className="text-sm font-mono text-zinc-200">{Array.isArray(extraction._chunks) ? extraction._chunks.length : 0}</p>
+        </div>
+      </div>
+
+      {extraction._warnings?.length > 0 && (
+        <div className="mb-5 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <p className="text-sm font-medium text-amber-400 mb-1">Parser warnings</p>
+          <ul className="space-y-1">
+            {extraction._warnings.map((w, i) => (
+              <li key={i} className="text-xs text-amber-400/80">· {w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Auth credentials missing warning */}
       {authWarning && (

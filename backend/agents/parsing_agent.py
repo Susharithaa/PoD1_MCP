@@ -22,10 +22,11 @@ class ParsingAgent(BaseAgent):
         base_info, chunks = await chunk(text, fmt)
 
         session.extracted_schema = {
-            "base_url":  base_info.get("base_url", ""),
-            "auth_type": base_info.get("auth_type", "UNKNOWN"),
-            "name":      base_info.get("name", ""),
-            "_fmt":      fmt,
+            "base_url":    base_info.get("base_url", ""),
+            "auth_type":   base_info.get("auth_type", "UNKNOWN"),
+            "name":        base_info.get("name", ""),
+            "description": base_info.get("description", ""),
+            "_fmt":        fmt,
             "_doc_type": "api" if chunks else "generic_yaml_or_text",
             "_warnings": [] if chunks else [
                 "No API endpoints were detected. The file looks like generic YAML/text rather than API documentation."

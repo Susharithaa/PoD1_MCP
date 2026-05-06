@@ -17,28 +17,47 @@ const CHAT_HEIGHT_EXPANDED = "calc(100vh - 84px)";
 export default function ChatGPTHub() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [stats,         setStats]         = useState(null);
-  const [apis,          setApis]          = useState([]);
-  const [subStatus,     setSubStatus]     = useState(null);
-  const [loading,       setLoading]       = useState(true);
-  const [toggling,      setToggling]      = useState(null);
-  const [search,        setSearch]        = useState("");
-  const [expanded,      setExpanded]      = useState(false);
-  const [activeSession, setActiveSession] = useState(null);
-  const [requesting,    setRequesting]    = useState(false);
-  const [recentSessions, setRecentSessions] = useState([]);
+  const [stats,           setStats]           = useState(null);
+  const [apis,            setApis]            = useState([]);
+  const [subStatus,       setSubStatus]       = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [toggling,        setToggling]        = useState(null);
+  const [connectingAll,   setConnectingAll]   = useState(false);
+  const [search,          setSearch]          = useState("");
+  const [expanded,        setExpanded]        = useState(false);
+  const [activeSession,   setActiveSession]   = useState(null);
+  const [requesting,      setRequesting]      = useState(false);
+  const [recentSessions,  setRecentSessions]  = useState([]);
 
   const isAdmin = user?.role === "admin";
+
+  async function refreshAll() {
+    const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)]);
+    setStats(s);
+    setApis(a);
+    setRecentSessions(recent || []);
+    return a;
+  }
 
   useEffect(() => {
     const loads = [chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)];
     if (!isAdmin) loads.push(subscriptionApi.getStatus());
     Promise.all(loads)
-      .then(([s, a, recent, sub]) => {
+      .then(async ([s, a, recent, sub]) => {
         setStats(s);
-        setApis(a);
         setRecentSessions(recent || []);
         if (sub) setSubStatus(sub);
+
+        // Auto-connect any APIs that are not yet connected
+        const unconnected = (a || []).filter(api => !api.is_connected);
+        if (unconnected.length > 0) {
+          await Promise.allSettled(unconnected.map(api => chatgptApi.connect(api.id)));
+          const [newStats, newApis] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry()]);
+          setStats(newStats);
+          setApis(newApis);
+        } else {
+          setApis(a);
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -60,16 +79,25 @@ export default function ChatGPTHub() {
     try {
       if (api.is_connected) {
         await chatgptApi.disconnect(api.id);
-        setActiveSession(null); // stale tool history must not persist
+        setActiveSession(null);
       } else {
         await chatgptApi.connect(api.id);
       }
-      const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)]);
-      setStats(s);
-      setApis(a);
-      setRecentSessions(recent || []);
+      await refreshAll();
     } finally {
       setToggling(null);
+    }
+  }
+
+  async function connectAll() {
+    const unconnected = apis.filter(a => !a.is_connected);
+    if (unconnected.length === 0) return;
+    setConnectingAll(true);
+    try {
+      await Promise.allSettled(unconnected.map(api => chatgptApi.connect(api.id)));
+      await refreshAll();
+    } finally {
+      setConnectingAll(false);
     }
   }
 
@@ -77,11 +105,8 @@ export default function ChatGPTHub() {
     if (!confirm(`Delete "${api.name}" and all its endpoints?`)) return;
     try {
       await registryApi.delete(api.id);
-      const [s, a, recent] = await Promise.all([chatgptApi.getStats(), chatgptApi.getRegistry(), monitorApi.sessions(8)]);
-      setStats(s);
-      setApis(a);
-      setRecentSessions(recent || []);
-      if (activeSession && !recent?.some(r => r.id === activeSession)) setActiveSession(null);
+      await refreshAll();
+      if (activeSession) setActiveSession(null);
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to delete API.");
     }
@@ -92,7 +117,8 @@ export default function ChatGPTHub() {
     a.name.toLowerCase().includes(search.toLowerCase()) ||
     a.description?.toLowerCase().includes(search.toLowerCase())
   );
-  const connectedApis = apis.filter(a => a.is_connected);
+  const connectedApis  = apis.filter(a => a.is_connected);
+  const hasUnconnected = apis.some(a => !a.is_connected);
 
   if (loading) return <PageSpinner />;
 
@@ -108,7 +134,6 @@ export default function ChatGPTHub() {
   if (expanded) {
     return (
       <div className="animate-slide-up">
-        {/* Compact header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <h1 className="text-base font-semibold text-zinc-100">{t("MCP Chat")}</h1>
@@ -135,6 +160,7 @@ export default function ChatGPTHub() {
           onToggleExpand={() => setExpanded(false)}
           t={t}
           onStatsRefresh={() => chatgptApi.getStats().then(setStats)}
+          onSessionsRefresh={() => monitorApi.sessions(8).then(setRecentSessions).catch(() => {})}
           activeSession={activeSession}
           onSessionChange={setActiveSession}
         />
@@ -169,18 +195,32 @@ export default function ChatGPTHub() {
       </div>
 
       <div className="grid grid-cols-[1fr_460px] gap-5 items-start">
-        {/* Left — API list, scrolls independently */}
-        <div
-          className="overflow-y-auto pr-1"
-          style={{ maxHeight: CHAT_HEIGHT_NORMAL }}
-        >
+        {/* Left — API list */}
+        <div className="overflow-y-auto pr-1" style={{ maxHeight: CHAT_HEIGHT_NORMAL }}>
+
+          {/* Section header + Connect All */}
           <div className="flex items-center justify-between mb-3">
-            <p className="section-title">{t("Available APIs")}</p>
-            <span className="text-xs text-zinc-600">
-              {connectedApis.length} {t("connected")}
-            </span>
+            <div>
+              <p className="section-title">{t("Available APIs")}</p>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                {connectedApis.length} {t("connected")} · {apis.length} total
+              </p>
+            </div>
+            {hasUnconnected && (
+              <button
+                onClick={connectAll}
+                disabled={connectingAll}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium
+                           bg-emerald-500/10 text-emerald-400 border border-emerald-500/25
+                           hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+              >
+                {connectingAll ? <Spinner size={11} /> : <PlugSmIcon />}
+                {t("Connect All")}
+              </button>
+            )}
           </div>
 
+          {/* Search */}
           {apis.length > 0 && (
             <div className="relative mb-3">
               <SearchIcon />
@@ -194,6 +234,7 @@ export default function ChatGPTHub() {
             </div>
           )}
 
+          {/* API rows */}
           {filtered.length === 0 ? (
             <div className="card p-10 text-center">
               <p className="text-zinc-500 text-sm">{t("No APIs in registry yet.")}</p>
@@ -208,15 +249,16 @@ export default function ChatGPTHub() {
             </div>
           )}
 
+          {/* Chat History */}
           <div className="mt-5 card overflow-hidden">
             <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Chat History</p>
-                <p className="text-xs text-zinc-600 mt-1">Recent sessions and prompts</p>
+                <p className="text-xs text-zinc-600 mt-0.5">Recent sessions and prompts</p>
               </div>
               <span className="text-[10px] text-zinc-500">{recentSessions.length} logs</span>
             </div>
-            <div className="max-h-[320px] overflow-y-auto divide-y divide-zinc-800">
+            <div className="max-h-[340px] overflow-y-auto divide-y divide-zinc-800">
               {recentSessions.length === 0 ? (
                 <div className="px-4 py-4 text-xs text-zinc-500">No chat sessions yet.</div>
               ) : (
@@ -225,25 +267,29 @@ export default function ChatGPTHub() {
                     key={session.id}
                     type="button"
                     onClick={() => setActiveSession(session.id)}
-                    className={`w-full text-left px-4 py-3 transition-colors hover:bg-zinc-900/60 ${activeSession === session.id ? "bg-emerald-500/5" : ""}`}
+                    className={`w-full text-left px-4 py-3 transition-colors hover:bg-zinc-900/60
+                                ${activeSession === session.id ? "bg-emerald-500/5" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-100 truncate">{session.api_name}</p>
-                        <p className="text-[11px] text-zinc-500 truncate">
-                          {session.user_name} · {session.user_email}
-                        </p>
+                        <p className="text-sm font-medium text-zinc-100 truncate">{session.api_name || "—"}</p>
+                        {(session.user_name || session.user_email) && (
+                          <p className="text-[11px] text-zinc-500 truncate mt-0.5">
+                            by {session.user_name || session.user_email}
+                            {session.user_name && session.user_email && ` · ${session.user_email}`}
+                          </p>
+                        )}
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 whitespace-nowrap">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 whitespace-nowrap flex-shrink-0">
                         {session.state}
                       </span>
                     </div>
-                    <p className="text-xs text-zinc-500 mt-2 line-clamp-2">
-                      {session.raw_input || "No prompt captured"}
-                    </p>
-                    <p className="text-xs text-zinc-400 mt-2 line-clamp-2">
-                      {session.response || "No response captured"}
-                    </p>
+                    {session.raw_input && (
+                      <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{session.raw_input}</p>
+                    )}
+                    {session.response && (
+                      <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{session.response}</p>
+                    )}
                     <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-600">
                       <span>{session.test_verdict}</span>
                       <span>{session.created_time || fmtSessionAge(session.created_at)}</span>
@@ -255,7 +301,7 @@ export default function ChatGPTHub() {
           </div>
         </div>
 
-        {/* Right — Chat panel, sticky so it never scrolls off screen */}
+        {/* Right — Chat panel, sticky */}
         <div className="sticky top-8">
           <ChatPanel
             connectedApis={connectedApis}
@@ -263,6 +309,7 @@ export default function ChatGPTHub() {
             onToggleExpand={() => setExpanded(true)}
             t={t}
             onStatsRefresh={() => chatgptApi.getStats().then(setStats)}
+            onSessionsRefresh={() => monitorApi.sessions(8).then(setRecentSessions).catch(() => {})}
             activeSession={activeSession}
             onSessionChange={setActiveSession}
           />
@@ -274,15 +321,18 @@ export default function ChatGPTHub() {
 
 /* ── API row ── */
 function ApiRow({ api, toggling, onToggle, onDelete, t }) {
-  const [expanded, setExpanded] = useState(false);
+  const [schemaOpen, setSchemaOpen] = useState(false);
   return (
     <div className={`card transition-all ${api.is_connected
       ? "border-emerald-500/25 bg-emerald-500/3"
       : "hover:border-zinc-700"}`}>
       <div className="px-4 py-3 flex items-center gap-3">
+        {/* Status dot */}
         <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${
           api.is_connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" : "bg-zinc-700"
         }`} />
+
+        {/* Name + meta */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-zinc-100 truncate">{api.name}</span>
@@ -293,34 +343,67 @@ function ApiRow({ api, toggling, onToggle, onDelete, t }) {
           {api.description && (
             <p className="text-xs text-zinc-600 truncate mt-0.5">{api.description}</p>
           )}
+          {api.created_by && (
+            <p className="text-[10px] text-zinc-700 mt-0.5">created by {api.created_by}</p>
+          )}
         </div>
+
+        {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {api.tools?.length > 0 && (
-            <button onClick={() => setExpanded(e => !e)}
-              className="text-xs text-zinc-600 hover:text-zinc-400 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">
-              {expanded ? t("Hide") : t("Schema")}
+            <button
+              onClick={() => setSchemaOpen(o => !o)}
+              className="text-xs text-zinc-600 hover:text-zinc-400 px-2 py-1 rounded hover:bg-zinc-800 transition-colors"
+            >
+              {schemaOpen ? t("Hide") : t("Schema")}
             </button>
           )}
-          <button onClick={onToggle} disabled={toggling}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium
-                        transition-all disabled:opacity-50
-                        ${api.is_connected
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/25"
-                          : "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-blue-500/10 hover:text-blue-400 hover:border-blue-500/25"}`}>
-            {toggling ? <Spinner size={11} /> : api.is_connected ? <UnplugIcon /> : <PlugSmIcon />}
-            {api.is_connected ? t("Connected") : t("Connect")}
-          </button>
+
+          {/* Connect / Disconnect button */}
+          {api.is_connected ? (
+            <button
+              onClick={onToggle}
+              disabled={toggling}
+              title={t("Disconnect this API")}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium
+                         transition-all disabled:opacity-50
+                         bg-emerald-500/10 text-emerald-400 border border-emerald-500/25
+                         hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/25"
+            >
+              {toggling ? <Spinner size={11} /> : <UnplugIcon />}
+              <span className="group-hover:hidden">{t("Disconnect")}</span>
+            </button>
+          ) : (
+            <button
+              onClick={onToggle}
+              disabled={toggling}
+              title={t("Connect this API to chat")}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium
+                         transition-all disabled:opacity-50
+                         bg-zinc-800 text-zinc-400 border border-zinc-700
+                         hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/25"
+            >
+              {toggling ? <Spinner size={11} /> : <PlugSmIcon />}
+              {t("Connect")}
+            </button>
+          )}
+
+          {/* Delete button */}
           <button
             onClick={onDelete}
+            title={t("Delete this API")}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium
-                       bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/15"
+                       bg-red-500/10 text-red-400 border border-red-500/20
+                       hover:bg-red-500/15 transition-colors"
           >
             <TrashIcon />
             {t("Delete")}
           </button>
         </div>
       </div>
-      {expanded && api.tools?.length > 0 && (
+
+      {/* Schema expand */}
+      {schemaOpen && api.tools?.length > 0 && (
         <div className="border-t border-zinc-800 px-4 py-3 space-y-2 animate-fade-in">
           {api.tools.map((tool, i) => (
             <div key={i} className="rounded-lg bg-zinc-950 border border-zinc-800 p-3">
@@ -337,24 +420,24 @@ function ApiRow({ api, toggling, onToggle, onDelete, t }) {
 /* ════════════════════════════════════════════════════════════════════════════
    Chat Panel
 ═══════════════════════════════════════════════════════════════════════════ */
-function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onToggleExpand, t, activeSession, onSessionChange }) {
-  const [messages, setMessages] = useState([]);
-  const [input,    setInput]    = useState("");
-  const [sending,  setSending]  = useState(false);
+function ChatPanel({
+  connectedApis, onStatsRefresh, onSessionsRefresh,
+  chatHeight, expanded, onToggleExpand,
+  t, activeSession, onSessionChange,
+}) {
+  const [messages,       setMessages]       = useState([]);
+  const [input,          setInput]          = useState("");
+  const [sending,        setSending]        = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
-  const bottomRef  = useRef(null);
-  const inputRef   = useRef(null);
+  const bottomRef = useRef(null);
+  const inputRef  = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
   useEffect(() => {
-    if (!activeSession) {
-      setMessages([]);
-      return;
-    }
-
+    if (!activeSession) { setMessages([]); return; }
     setLoadingSession(true);
     chatgptApi.getSession(activeSession)
       .then(info => {
@@ -362,11 +445,7 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
         setMessages(transcript.map(normalizeMessage));
       })
       .catch(() => {
-        setMessages([{
-          role: "error",
-          content: "Unable to load this chat history.",
-          ts: now(),
-        }]);
+        setMessages([{ role: "error", content: "Unable to load this chat history.", ts: now() }]);
       })
       .finally(() => setLoadingSession(false));
   }, [activeSession]);
@@ -375,47 +454,34 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
     const text = input.trim();
     if (!text || sending) return;
 
-    const userMsg = { role: "user", content: text, ts: now() };
-    setMessages(m => [...m, userMsg]);
+    setMessages(m => [...m, { role: "user", content: text, ts: now() }]);
     setInput("");
     setSending(true);
 
-    // Pre-flight: no tools connected at all
     if (connectedApis.length === 0) {
       setSending(false);
-      setMessages(m => [...m, {
-        role: "system",
-        type: "no_tools",
-        ts: now(),
-      }]);
+      setMessages(m => [...m, { role: "system", type: "no_tools", ts: now() }]);
       return;
     }
 
     try {
       const res = await chatgptApi.chat(text, [], activeSession);
-
       if (res.session_id) onSessionChange(res.session_id);
 
       if (res.status === "NO_TOOLS_CONNECTED") {
         setMessages(m => [...m, { role: "system", type: "no_tools", ts: now() }]);
       } else if (res.status === "NO_RELEVANT_TOOL") {
         setMessages(m => [...m, {
-          role: "system",
-          type: "no_relevant_tool",
-          available_tools: res.available_tools,
-          query: text,
-          ts: now(),
+          role: "system", type: "no_relevant_tool",
+          available_tools: res.available_tools, query: text, ts: now(),
         }]);
       } else {
         setMessages(m => [...m, {
-          role: "assistant",
-          content: res.response,
-          tool_calls: res.tool_calls,
-          model: res.model,
-          ts: now(),
+          role: "assistant", content: res.response,
+          tool_calls: res.tool_calls, model: res.model, ts: now(),
         }]);
         onStatsRefresh();
-        monitorApi.sessions(8).then(setRecentSessions).catch(() => {});
+        onSessionsRefresh(); // fixed: now a proper callback prop
       }
     } catch (err) {
       setMessages(m => [...m, {
@@ -429,8 +495,8 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
     }
   }
 
-  const noTools     = connectedApis.length === 0;
-  const toolNames   = connectedApis.flatMap(a => a.tools?.map(t => t.function.name) || []);
+  const noTools   = connectedApis.length === 0;
+  const toolNames = connectedApis.flatMap(a => a.tools?.map(t => t.function.name) || []);
 
   return (
     <div className="card flex flex-col overflow-hidden" style={{ height: chatHeight || "680px" }}>
@@ -467,17 +533,11 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
-        {loadingSession && (
-          <div className="text-sm text-zinc-500">Loading chat history…</div>
-        )}
+        {loadingSession && <div className="text-sm text-zinc-500">Loading chat history…</div>}
         {!loadingSession && messages.length === 0 && (
           <EmptyState noTools={noTools} toolNames={toolNames} t={t} />
         )}
-
-        {messages.map((msg, i) => (
-          <MessageRow key={i} msg={msg} t={t} />
-        ))}
-
+        {messages.map((msg, i) => <MessageRow key={i} msg={msg} t={t} />)}
         {sending && <TypingIndicator />}
         <div ref={bottomRef} />
       </div>
@@ -503,13 +563,10 @@ function ChatPanel({ connectedApis, onStatsRefresh, chatHeight, expanded, onTogg
               e.target.style.height = "auto";
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
             }}
-            onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
-            }}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             disabled={sending}
             placeholder={noTools ? t("Connect an API first…") : t("Ask anything about your connected tools…")}
-            className="input flex-1 resize-none overflow-hidden min-h-[40px] disabled:opacity-40
-                       leading-relaxed py-2.5"
+            className="input flex-1 resize-none overflow-hidden min-h-[40px] disabled:opacity-40 leading-relaxed py-2.5"
             style={{ lineHeight: "1.5" }}
           />
           <button
@@ -560,9 +617,7 @@ function MessageRow({ msg, t }) {
         <div className="flex flex-col gap-1 max-w-sm">
           {msg.tool_calls?.length > 0 && (
             <div className="space-y-1 mb-1">
-              {msg.tool_calls.map((tc, j) => (
-                <ToolCallPill key={j} tc={tc} t={t} />
-              ))}
+              {msg.tool_calls.map((tc, j) => <ToolCallPill key={j} tc={tc} t={t} />)}
             </div>
           )}
           {msg.content && (
@@ -590,9 +645,7 @@ function MessageRow({ msg, t }) {
       <div className="flex justify-center">
         <div className="max-w-xs w-full rounded-xl border border-amber-500/20
                         bg-amber-500/8 px-4 py-3 text-center">
-          <p className="text-xs font-semibold text-amber-400 mb-1">
-            {t("No tools connected")}
-          </p>
+          <p className="text-xs font-semibold text-amber-400 mb-1">{t("No tools connected")}</p>
           <p className="text-xs text-zinc-500">
             {t("Connect an API from the list on the left to enable tool-powered responses.")}
           </p>
@@ -604,13 +657,10 @@ function MessageRow({ msg, t }) {
   if (msg.role === "system" && msg.type === "no_relevant_tool") {
     return (
       <div className="flex justify-center">
-        <div className="max-w-xs w-full rounded-xl border border-zinc-700
-                        bg-zinc-900 px-4 py-3">
+        <div className="max-w-xs w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-zinc-500 text-sm">⊘</span>
-            <p className="text-xs font-semibold text-zinc-300">
-              {t("No matching tool")}
-            </p>
+            <p className="text-xs font-semibold text-zinc-300">{t("No matching tool")}</p>
           </div>
           <p className="text-xs text-zinc-500 mb-3">
             {t("Your question doesn't relate to any connected tool. Available tools:")}
@@ -634,8 +684,7 @@ function MessageRow({ msg, t }) {
   if (msg.role === "error") {
     return (
       <div className="flex justify-center">
-        <span className="text-xs text-red-400 px-3 py-1.5 rounded-full
-                         bg-red-500/10 border border-red-500/20">
+        <span className="text-xs text-red-400 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
           {msg.content}
         </span>
       </div>
@@ -658,49 +707,35 @@ function ToolCallPill({ tc, t }) {
     : tc.success
       ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
       : "text-red-400 bg-red-500/10 border-red-500/20";
-
   const statusIcon = isMissing ? "?" : tc.success ? "✓" : "✕";
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 text-xs overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left
-                   hover:bg-zinc-900/60 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-900/60 transition-colors"
       >
-        <span className={`w-4 h-4 rounded flex items-center justify-center text-[9px]
-                          font-bold flex-shrink-0 border ${statusColor}`}>
+        <span className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold flex-shrink-0 border ${statusColor}`}>
           {statusIcon}
         </span>
         <span className="flex-1 font-mono text-zinc-400 truncate">
-          {tc.api_name}
-          <span className="text-zinc-600 mx-1">›</span>
-          {tc.endpoint}
+          {tc.api_name}<span className="text-zinc-600 mx-1">›</span>{tc.endpoint}
         </span>
         <span className="text-zinc-700 text-[10px]">{t("details")}</span>
         <ChevronSmIcon open={open} />
       </button>
-
       {open && (
         <div className="border-t border-zinc-800 px-3 py-2.5 space-y-2.5 animate-fade-in">
           <div>
-            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1">
-              {t("Arguments")}
-            </p>
+            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1">{t("Arguments")}</p>
             <pre className="font-mono text-zinc-400 overflow-x-auto text-[11px] leading-relaxed">
               {JSON.stringify(tc.arguments, null, 2)}
             </pre>
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1">
-              {t("Result")}
-            </p>
-            <pre className={`font-mono overflow-x-auto text-[11px] leading-relaxed max-h-36
-                             ${isMissing ? "text-amber-400/80" : "text-zinc-400"}`}>
-              {(() => {
-                try { return JSON.stringify(JSON.parse(tc.result), null, 2); }
-                catch { return tc.result; }
-              })()}
+            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1">{t("Result")}</p>
+            <pre className={`font-mono overflow-x-auto text-[11px] leading-relaxed max-h-36 ${isMissing ? "text-amber-400/80" : "text-zinc-400"}`}>
+              {(() => { try { return JSON.stringify(JSON.parse(tc.result), null, 2); } catch { return tc.result; } })()}
             </pre>
           </div>
         </div>
@@ -713,12 +748,10 @@ function ToolCallPill({ tc, t }) {
 function TypingIndicator() {
   return (
     <div className="flex items-end gap-2">
-      <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700
-                      flex items-center justify-center flex-shrink-0">
+      <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
         <BotIcon />
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-zinc-800 border border-zinc-700
-                      flex items-center gap-1.5">
+      <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-zinc-800 border border-zinc-700 flex items-center gap-1.5">
         {[0, 1, 2].map(i => (
           <span key={i} className="w-1.5 h-1.5 rounded-full bg-zinc-500"
             style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
@@ -755,16 +788,13 @@ function EmptyState({ noTools, toolNames, t }) {
                 {t("Available tools")}
               </p>
               {toolNames.slice(0, 5).map((name, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg
-                                        bg-zinc-900 border border-zinc-800">
+                <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                   <span className="text-xs font-mono text-zinc-400 truncate">{name}</span>
                 </div>
               ))}
               {toolNames.length > 5 && (
-                <p className="text-xs text-zinc-700 text-center pt-1">
-                  +{toolNames.length - 5} {t("more")}
-                </p>
+                <p className="text-xs text-zinc-700 text-center pt-1">+{toolNames.length - 5} {t("more")}</p>
               )}
             </div>
           )}
@@ -777,24 +807,9 @@ function EmptyState({ noTools, toolNames, t }) {
 /* ── Subscription gate components ── */
 function AccessGate({ status, onRequest, requesting, t }) {
   const states = {
-    none: {
-      icon: "🔒",
-      title: "Chat Access Required",
-      desc: "Request access to use MCP Chat. An admin will review and approve your request.",
-      action: true,
-    },
-    pending: {
-      icon: "⏳",
-      title: "Request Pending",
-      desc: "Your access request has been submitted. You'll be able to chat once an admin approves it.",
-      action: false,
-    },
-    rejected: {
-      icon: "✕",
-      title: "Access Denied",
-      desc: "Your request was not approved. Contact an admin if you believe this is a mistake.",
-      action: true,
-    },
+    none:     { icon: "🔒", title: "Chat Access Required",    desc: "Request access to use MCP Chat. An admin will review and approve your request.", action: true },
+    pending:  { icon: "⏳", title: "Request Pending",          desc: "Your access request has been submitted. You'll be able to chat once an admin approves it.", action: false },
+    rejected: { icon: "✕",  title: "Access Denied",            desc: "Your request was not approved. Contact an admin if you believe this is a mistake.", action: true },
   };
   const s = states[status] || states.none;
   return (
@@ -806,11 +821,8 @@ function AccessGate({ status, onRequest, requesting, t }) {
           <p className="text-sm text-zinc-500 mt-1">{s.desc}</p>
         </div>
         {s.action && (
-          <button
-            onClick={onRequest}
-            disabled={requesting}
-            className="btn-primary w-full justify-center disabled:opacity-60"
-          >
+          <button onClick={onRequest} disabled={requesting}
+            className="btn-primary w-full justify-center disabled:opacity-60">
             {requesting ? <Spinner size={14} /> : "Request Access"}
           </button>
         )}
@@ -826,9 +838,7 @@ function NoCreditsGate({ t }) {
         <div className="text-4xl">💳</div>
         <div>
           <p className="text-base font-semibold text-zinc-100">No Credits Remaining</p>
-          <p className="text-sm text-zinc-500 mt-1">
-            Your credit balance is $0.00. Contact an admin to top up your account.
-          </p>
+          <p className="text-sm text-zinc-500 mt-1">Your credit balance is $0.00. Contact an admin to top up your account.</p>
         </div>
       </div>
     </div>
@@ -850,57 +860,35 @@ function StatCard({ label, value, icon, accent }) {
 }
 
 /* ── Icons ── */
-function LayersIcon()   { return <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5L13 4.5L7.5 7.5L2 4.5L7.5 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2 7.5L7.5 10.5L13 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>; }
-function PlugIcon()     { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M5 1v3M10 1v3M3 7h9M4 4h7v3a3.5 3.5 0 0 1-7 0V4Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M7.5 10.5v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
-function PlugSmIcon()   { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M5 1v3M10 1v3M3 7h9M4 4h7v3a3.5 3.5 0 0 1-7 0V4Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M7.5 10.5v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
-function UnplugIcon()   { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M3 3l9 9M5 1v3M10 1v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
-function BoltIcon()     { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M8.5 1.5l-5 7h5l-2 5 6-8H8l.5-4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>; }
-function SendIcon()     { return <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M1 7.5h13M9 3l5 4.5L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
-function SearchIcon()   { return <svg width="14" height="14" viewBox="0 0 15 15" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
+function LayersIcon()    { return <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5L13 4.5L7.5 7.5L2 4.5L7.5 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2 7.5L7.5 10.5L13 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>; }
+function PlugIcon()      { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M5 1v3M10 1v3M3 7h9M4 4h7v3a3.5 3.5 0 0 1-7 0V4Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M7.5 10.5v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
+function PlugSmIcon()    { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M5 1v3M10 1v3M3 7h9M4 4h7v3a3.5 3.5 0 0 1-7 0V4Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M7.5 10.5v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
+function UnplugIcon()    { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M3 3l9 9M5 1v3M10 1v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
+function BoltIcon()      { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M8.5 1.5l-5 7h5l-2 5 6-8H8l.5-4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>; }
+function SendIcon()      { return <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M1 7.5h13M9 3l5 4.5L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
+function SearchIcon()    { return <svg width="14" height="14" viewBox="0 0 15 15" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
 function ChatBubbleIcon(){ return <svg width="20" height="20" viewBox="0 0 15 15" fill="none"><path d="M2 2h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 3V3a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>; }
-function BotIcon()      { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="12" rx="3" stroke="currentColor" strokeWidth="1.6"/><path d="M9 12h.01M15 12h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M12 8V4M9 4h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>; }
-function UserIcon()     { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>; }
+function BotIcon()       { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="12" rx="3" stroke="currentColor" strokeWidth="1.6"/><path d="M9 12h.01M15 12h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M12 8V4M9 4h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>; }
+function UserIcon()      { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>; }
 function ChevronSmIcon({ open }) { return <svg width="11" height="11" viewBox="0 0 15 15" fill="none" className={`text-zinc-600 transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}><path d="M3 5l4.5 5L12 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
-function ExpandIcon()   { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M9 1h5v5M6 9l8-8M1 6V1h5M6 9L1 14M9 14h5v-5M9 6l5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
-function ShrinkIcon()   { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M9 6V1M9 6h5M6 9H1M6 9v5M14 1l-5 5M1 14l5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
-function CreditIcon()   { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><rect x="1" y="3.5" width="13" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M1 6.5h13" stroke="currentColor" strokeWidth="1.4"/><path d="M4 9.5h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
-function TrashIcon()    { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M3 3.5h9M5.5 3.5V2.5h4v1M6 6v5M9 6v5M4 3.5l.5 9h6l.5-9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
+function ExpandIcon()    { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M9 1h5v5M6 9l8-8M1 6V1h5M6 9L1 14M9 14h5v-5M9 6l5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
+function ShrinkIcon()    { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M9 6V1M9 6h5M6 9H1M6 9v5M14 1l-5 5M1 14l5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
+function CreditIcon()    { return <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><rect x="1" y="3.5" width="13" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M1 6.5h13" stroke="currentColor" strokeWidth="1.4"/><path d="M4 9.5h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
+function TrashIcon()     { return <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><path d="M3 3.5h9M5.5 3.5V2.5h4v1M6 6v5M9 6v5M4 3.5l.5 9h6l.5-9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
 
 function fmtSessionAge(iso) {
   const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (secs < 60) return `${secs}s ago`;
+  if (secs < 60)   return `${secs}s ago`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
   return `${Math.floor(secs / 3600)}h ago`;
 }
 
 function normalizeMessage(msg) {
-  if (!msg || typeof msg !== "object") {
-    return { role: "system", type: "no_tools", ts: now() };
-  }
-
+  if (!msg || typeof msg !== "object") return { role: "system", type: "no_tools", ts: now() };
   const ts = msg.ts ? Date.parse(msg.ts) : now();
-  if (msg.role === "assistant") {
-    return {
-      role: "assistant",
-      content: msg.content || "",
-      tool_calls: msg.tool_calls || [],
-      model: msg.model,
-      ts,
-    };
-  }
-  if (msg.role === "tool") {
-    return {
-      role: "tool",
-      tool_call_id: msg.tool_call_id,
-      content: msg.content || "",
-      ts,
-    };
-  }
-  if (msg.role === "error") {
-    return { role: "error", content: msg.content || "Error", ts };
-  }
-  if (msg.role === "system" && msg.type) {
-    return { role: "system", type: msg.type, available_tools: msg.available_tools || [], query: msg.query, ts };
-  }
+  if (msg.role === "assistant") return { role: "assistant", content: msg.content || "", tool_calls: msg.tool_calls || [], model: msg.model, ts };
+  if (msg.role === "tool")      return { role: "tool", tool_call_id: msg.tool_call_id, content: msg.content || "", ts };
+  if (msg.role === "error")     return { role: "error", content: msg.content || "Error", ts };
+  if (msg.role === "system" && msg.type) return { role: "system", type: msg.type, available_tools: msg.available_tools || [], query: msg.query, ts };
   return { role: "user", content: msg.content || "", ts };
 }

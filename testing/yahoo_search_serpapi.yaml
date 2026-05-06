@@ -1,24 +1,27 @@
 openapi: 3.0.3
 info:
-  title: Yahoo Search via SerpApi
+  title: Yahoo Search Japan via SerpApi
   version: 1.0.0
-  description: Search Yahoo results through SerpApi for MCP Hub testing.
+  description: Search Yahoo Japan results through SerpApi for MCP Hub testing.
 servers:
   - url: https://serpapi.com
+
 security:
   - serpApiKey: []
+
 components:
   securitySchemes:
     serpApiKey:
       type: apiKey
       in: query
       name: api_key
+
 paths:
   /search:
     get:
-      summary: Search Yahoo
-      operationId: searchYahoo
-      description: Run a Yahoo web search and return structured search results.
+      operationId: searchYahooJapan
+      summary: Search Yahoo Japan
+      description: Run a Yahoo Japan web search and return structured search results.
       parameters:
         - name: engine
           in: query
@@ -33,24 +36,40 @@ paths:
           required: true
           schema:
             type: string
-          description: Search query, for example weather in Chennai.
+          description: Search query in Japanese or English, for example Tokyo restaurants.
         - name: vc
           in: query
           required: false
           schema:
             type: string
-            default: in
-          description: Country code for localized Yahoo search results.
+            default: jp
+          description: Country code for Yahoo Japan localization. Always jp.
         - name: vl
           in: query
           required: false
           schema:
             type: string
-            default: lang_en
-          description: Language filter, for example lang_en.
+            default: lang_ja
+          description: Language filter for Japanese results. Use lang_ja for Japanese or lang_en for English.
+        - name: num
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of results to return per page.
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination. Use multiples of num to get subsequent pages.
       responses:
         "200":
-          description: Yahoo search results from SerpApi.
+          description: Yahoo Japan search results from SerpApi.
           content:
             application/json:
               schema:
@@ -73,5 +92,16 @@ paths:
                           type: string
                         link:
                           type: string
+                        displayed_link:
+                          type: string
                         snippet:
+                          type: string
+                  related_searches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        query:
+                          type: string
+                        link:
                           type: string

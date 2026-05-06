@@ -70,6 +70,9 @@ def _from_openapi(method: str, path: str, data: dict) -> GroundTruth:
             "required":    p_req,
             "description": param.get("description") or "",
         }
+        extra_schema = _copy_schema_details(schema)
+        if extra_schema:
+            entry["schema"] = extra_schema
         if p_in == "path":
             path_params.append(entry)
         elif p_in == "query":
@@ -98,6 +101,40 @@ def _from_openapi(method: str, path: str, data: dict) -> GroundTruth:
         headers=headers,
         body_schema=body_schema,
     )
+
+
+def _copy_schema_details(schema: dict) -> dict:
+    """Keep only the OpenAPI schema fields we know how to preserve safely."""
+    if not isinstance(schema, dict):
+        return {}
+
+    keep = (
+        "type",
+        "format",
+        "enum",
+        "default",
+        "minimum",
+        "maximum",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "items",
+        "properties",
+        "required",
+        "description",
+    )
+    copied: dict = {}
+    for key in keep:
+        if key not in schema:
+            continue
+        value = schema[key]
+        if key in {"items", "properties"} and isinstance(value, dict):
+            copied[key] = value
+        elif key == "required" and isinstance(value, list):
+            copied[key] = value
+        elif key not in {"items", "properties", "required"}:
+            copied[key] = value
+    return copied
 
 
 # ── Plain text / regex ────────────────────────────────────────────────────────

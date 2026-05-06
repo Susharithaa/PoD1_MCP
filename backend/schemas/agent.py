@@ -51,6 +51,7 @@ class SessionResponse(BaseModel):
     id: str
     mode: str | None
     state: str
+    extracted_schema: Any = None
     draft_api: Any
     final_api: Any
     confidence_map: Any

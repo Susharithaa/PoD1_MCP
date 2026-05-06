@@ -37,7 +37,7 @@ async def chat(system: str, user: str, *, max_tokens: int = 2048) -> str:
     if _should_mock():
         if not settings.mock_llm:
             log.warning("Falling back to mock LLM mode because OPENAI_API_KEY is missing or placeholder-like.")
-        return _mock_response(user)
+        return _mock_response(system, user)
 
     client = get_client()
     response = await client.chat.completions.create(
@@ -56,7 +56,7 @@ async def chat_json(system: str, user: str, *, max_tokens: int = 2048) -> dict:
     if _should_mock():
         if not settings.mock_llm:
             log.warning("Falling back to mock LLM mode because OPENAI_API_KEY is missing or placeholder-like.")
-        raw = _mock_response(user)
+        raw = _mock_response(system, user)
         return _parse_json(raw)
 
     json_system = (
@@ -82,85 +82,76 @@ async def chat_json(system: str, user: str, *, max_tokens: int = 2048) -> dict:
 # Mock responses for local dev (MOCK_LLM=true)
 # ---------------------------------------------------------------------------
 
-def _mock_response(prompt: str) -> str:
-    p = prompt.lower()
+def _mock_response(system: str, prompt: str) -> str:
+    s = system.lower()
 
-    if "classify" in p:
-        return json.dumps({"mode": "CHAT", "raw_text": prompt})
-
-    if "extract" in p or "parse" in p:
+    # Dispatch by system prompt — reliable regardless of document content
+    if "api schema designer" in s:
+        # schema_agent._META_SYSTEM: returns API-level metadata
         return json.dumps({
-            "base_url": "https://api.example.com",
-            "endpoints": [
-                {
-                    "path": "/sales/report",
-                    "method": "GET",
-                    "name": "get_sales_report",
-                    "description": "Fetch latest sales report",
-                    "parameters": [
-                        {"name": "start_date", "type": "string", "required": True,
-                         "description": "Report start date (YYYY-MM-DD)"},
-                        {"name": "end_date", "type": "string", "required": True,
-                         "description": "Report end date (YYYY-MM-DD)"},
-                        {"name": "region", "type": "string", "required": False,
-                         "description": "Filter by region"},
-                    ],
-                    "response_example": {"total": 0, "currency": "USD", "items": []},
-                }
-            ],
-            "auth_type": "BEARER",
+            "name":        "",
+            "description": "",
+            "base_url":    "",
+            "version":     "1.0.0",
+            "auth_type":   "NONE",
         })
 
-    if "schema" in p or "openapi" in p:
+    if "api schema enricher" in s:
+        # schema_agent._ENDPOINT_SYSTEM: enriches a single endpoint
         return json.dumps({
-            "name": "Sales Report API",
-            "description": "API to fetch sales reports and send summaries",
-            "base_url": "https://api.example.com",
-            "endpoints": [
-                {
-                    "name": "get_sales_report",
-                    "description": "Fetch latest sales report",
-                    "path": "/sales/report",
-                    "method": "GET",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "start_date": {"type": "string", "description": "YYYY-MM-DD"},
-                            "end_date":   {"type": "string", "description": "YYYY-MM-DD"},
-                            "region":     {"type": "string", "description": "Optional region filter"},
-                        },
-                        "required": ["start_date", "end_date"],
-                    },
-                    "output_schema": {
-                        "type": "object",
-                        "properties": {
-                            "total":    {"type": "number"},
-                            "currency": {"type": "string"},
-                            "items":    {"type": "array"},
-                        },
-                    },
-                    "auth_type": "BEARER",
-                    "headers": [],
-                }
-            ],
+            "name":          "api_endpoint",
+            "description":   "API endpoint",
+            "path":          "/",
+            "method":        "GET",
+            "auth_type":     "NONE",
+            "input_schema":  {"type": "object", "properties": {}, "required": []},
+            "output_schema": {"type": "object", "properties": {}},
+            "headers":       [],
         })
 
-    if "api test" in p or "verify" in p or "reachable" in p or "status_code" in p:
+    if "list every api endpoint" in s:
+        # smart_chunker._INDEX_SYSTEM: returns endpoint index list
+        return json.dumps([])
+
+    if "extract the complete definition" in s:
+        # smart_chunker._ENDPOINT_SYSTEM: extracts one unstructured endpoint
         return json.dumps({
-            "verdict": "PASS",
-            "assessment": "API responded as expected. Response structure matches the described schema.",
-            "issues": [],
+            "path":             "/",
+            "method":           "GET",
+            "name":             "api_endpoint",
+            "description":      "API endpoint",
+            "parameters":       [],
+            "response_example": {},
         })
 
-    if "confidence" in p or "score" in p:
+    if "api-level metadata" in s:
+        # smart_chunker._BASE_INFO_SYSTEM
         return json.dumps({
-            "name":       {"score": 95, "status": "HIGH",    "suggestion": None},
-            "base_url":   {"score": 90, "status": "HIGH",    "suggestion": None},
-            "path":       {"score": 88, "status": "HIGH",    "suggestion": None},
-            "method":     {"score": 95, "status": "HIGH",    "suggestion": None},
-            "auth_type":  {"score": 60, "status": "MEDIUM",  "suggestion": "Verify token type"},
-            "input_schema": {"score": 75, "status": "MEDIUM","suggestion": "Consider adding pagination"},
-            "output_schema": {"score": 50, "status": "LOW",  "suggestion": "Response schema is partial"},
+            "name":        "",
+            "description": "",
+            "base_url":    "",
+            "auth_type":   "NONE",
+        })
+
+    if "api schema consistency reviewer" in s:
+        # reconciliation_agent._RECONCILE_SYSTEM
+        return json.dumps({"endpoints": []})
+
+    if "api testing expert" in s:
+        # api_test_agent._SYSTEM
+        return json.dumps({
+            "verdict":    "PASS",
+            "assessment": "Mock test passed.",
+            "issues":     [],
+        })
+
+    if "api quality reviewer" in s:
+        # confidence_agent._META_SYSTEM
+        return json.dumps({
+            "name":         {"score": 80, "status": "HIGH",   "suggestion": None},
+            "description":  {"score": 60, "status": "MEDIUM", "suggestion": None},
+            "base_url":     {"score": 80, "status": "HIGH",   "suggestion": None},
+            "auth_type":    {"score": 60, "status": "MEDIUM", "suggestion": None},
         })
 
     return json.dumps({"result": "ok"})

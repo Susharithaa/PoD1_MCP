@@ -106,10 +106,13 @@ def _build_from_structured(chunk: dict, ground_truth) -> dict:
     required: list = []
 
     for p in ground_truth.path_params + ground_truth.query_params:
-        properties[p["name"]] = {
+        prop_schema = {
             "type": p.get("type", "string"),
             "description": p.get("description", ""),
         }
+        if isinstance(p.get("schema"), dict):
+            prop_schema.update(_schema_subset(p["schema"]))
+        properties[p["name"]] = prop_schema
         if p.get("required"):
             required.append(p["name"])
 
@@ -140,6 +143,28 @@ def _build_from_structured(chunk: dict, ground_truth) -> dict:
         "output_schema": {"type": "object", "properties": {}},
         "headers":       ground_truth.headers,
     }
+
+
+def _schema_subset(schema: dict) -> dict:
+    """Preserve user-visible OpenAPI schema hints without dragging in invalid extras."""
+    if not isinstance(schema, dict):
+        return {}
+    keep = (
+        "format",
+        "enum",
+        "default",
+        "minimum",
+        "maximum",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "items",
+    )
+    result = {}
+    for key in keep:
+        if key in schema:
+            result[key] = schema[key]
+    return result
 
 
 class SchemaAgent(BaseAgent):
@@ -187,7 +212,7 @@ class SchemaAgent(BaseAgent):
             async with sem:
                 return await self._build_endpoint(c, fmt)
 
-        meta_task      = self._build_meta(extracted)
+        meta_task      = self._build_meta(extracted, fmt)
         endpoint_tasks = [_throttled(c) for c in chunks]
 
         meta, *results = await asyncio.gather(meta_task, *endpoint_tasks)
@@ -232,7 +257,17 @@ class SchemaAgent(BaseAgent):
         }
         return session
 
-    async def _build_meta(self, extracted: dict) -> dict:
+    async def _build_meta(self, extracted: dict, fmt: str = "") -> dict:
+        # For structured formats the metadata is already deterministically parsed —
+        # no LLM call needed, and calling one with mock mode would return empty data.
+        if fmt in _STRUCTURED_FORMATS:
+            return {
+                "name":        extracted.get("name", ""),
+                "description": extracted.get("description", ""),
+                "base_url":    extracted.get("base_url", ""),
+                "version":     "1.0.0",
+                "auth_type":   extracted.get("auth_type", "NONE"),
+            }
         prompt = json.dumps({
             "name":      extracted.get("name", ""),
             "base_url":  extracted.get("base_url", ""),
