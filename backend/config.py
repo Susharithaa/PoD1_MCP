@@ -73,7 +73,14 @@ class Settings(BaseSettings):
     max_request_bytes: int = 10 * 1024 * 1024
     allow_private_tool_hosts: bool = False
     allow_insecure_ssl: bool = False
-    csp_policy: str = "default-src 'self'; frame-ancestors 'none'"
+    csp_policy: str = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: https://fastapi.tiangolo.com; "
+    "frame-ancestors 'none';"
+)
     okta_authorize_url: str = ""
     okta_client_id: str = ""
     okta_redirect_uri: str = "http://localhost:8000/api/auth/okta/callback"

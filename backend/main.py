@@ -25,12 +25,20 @@ app = FastAPI(
     title="MCP Hub API",
     description="API creation, validation, and execution hub powered by AI agents",
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 app.state.limiter = limiter
 if RateLimitExceeded and _rate_limit_exceeded_handler:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(RequestContextMiddleware)
+
+
+@app.get("/")
+def home():
+    return {"message": "MCP Hub API Running"}
 
 app.add_middleware(
     CORSMiddleware,
