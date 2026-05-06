@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Japan Area Information Retrieval API
+  version: 1.0.0
+  description: Retrieve the list of major regional areas in Japan (e.g. Kanto, Kansai, Tohoku). Free API, no authentication required.
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Area List
+      operationId: getAreas
+      description: Returns all major regional area names in Japan such as Hokkaido, Tohoku, Kanto, Chubu, Kinki, Chugoku, Shikoku, and Kyushu-Okinawa.
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getAreas]
+            default: getAreas
+          description: API method name. Always getAreas for this operation.
+      responses:
+        "200":
+          description: List of regional areas in Japan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      area:
+                        type: array
+                        items:
+                          type: string
+                        description: List of area names in Japanese, e.g. 北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄.

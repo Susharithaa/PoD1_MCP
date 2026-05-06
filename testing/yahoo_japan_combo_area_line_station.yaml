@@ -1,0 +1,45 @@
+openapi: 3.0.3
+info:
+  title: Japan Area-Line-Station Connected Combo Box API
+  version: 1.0.0
+  description: "Step 2 of the Area→Line→Station cascade: given an area name from getAreas, returns all lines in that area. Then call getStations with the chosen line to complete the cascade. Free API, no authentication required."
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Lines for Area-Line-Station Combo
+      operationId: getLinesByAreaCombo
+      description: "Cascade step 2: provide an area name (from getAreas) to get its lines. Then use a line name with getStations to complete the Area→Line→Station selection chain."
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getLines]
+            default: getLines
+          description: API method name. Always getLines for this operation.
+        - name: area
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄]
+          description: "Area name from getAreas, e.g. 関東 or 近畿."
+      responses:
+        "200":
+          description: Lines in the selected area, to populate the line dropdown.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      line:
+                        type: array
+                        items:
+                          type: string
+                        description: Line names to show in the line combo box.

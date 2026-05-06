@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: J-Quants Japan Stock Daily Bars API
+  version: 1.0.0
+  description: "Fetch daily OHLCV (Open, High, Low, Close, Volume) bar data for Japanese stocks listed on the Tokyo Stock Exchange via J-Quants. Auth is sent as the x-api-key request header. DATA WINDOW: data is available from 2024-02-11 up to (today minus 3 months). For example if today is 2026-05-06, data goes from 2024-02-11 to 2026-02-06. Dates OLDER than 3 months ARE available. Dates NEWER than 3 months ago are NOT available. June 2025, July 2025, December 2025 — these are all OLDER than 3 months and ARE fully accessible."
+servers:
+  - url: https://api.jquants.com
+paths:
+  /v2/equities/bars/daily:
+    get:
+      summary: Get Daily Stock Price Bars
+      operationId: getDailyStockBars
+      description: "Returns daily Open, High, Low, Close, Volume data for a Japanese stock. DATA AVAILABILITY RULE: data exists from 2024-02-11 up to (today minus 3 months). As of today 2026-05-06, data goes from 2024-02-11 to 2026-02-06. GOOD date ranges: 20240301 to 20241231, 20250101 to 20251231, 20250601 to 20251231 — all fine. BAD date ranges: anything after 2026-02-06 (i.e. the last 3 months) — those dates have no data. When a user asks for a specific calendar period like 'June to December 2025', use exactly from=20250601 and to=20251231. Never refuse to query dates that are more than 3 months old. Common stock codes: 86970 (Japan Exchange Group), 7203 (Toyota), 9984 (SoftBank), 6758 (Sony), 7974 (Nintendo), 9433 (KDDI), 6861 (Keyence), 8306 (Mitsubishi UFJ)."
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "4-5 digit stock code listed on the Tokyo Stock Exchange, e.g. 86970, 7203, 9984."
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Specific trading date in YYYYMMDD format, e.g. 20240215. Must be at least 3 months before today. Data is available from 20240211 onwards."
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Start date of a date range query in YYYYMMDD format. Must be on or after 20240211. Example: 20240801."
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "End date of a date range query in YYYYMMDD format. Must be at least 3 months before today to fall within the available data window. Example: if today is 20260506, use at most 20260206."
+      responses:
+        "200":
+          description: Daily OHLCV bar data for the requested stock. NOTE - the response root key is "data" (not "daily_bars"). Field names are abbreviated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    description: List of daily bar records. To find the highest price use field "H"; for lowest use "L"; for close use "C"; for open use "O"; for volume use "V".
+                    items:
+                      type: object
+                      properties:
+                        Code:
+                          type: string
+                          description: Stock code (5 digits, e.g. 67580).
+                        Date:
+                          type: string
+                          description: Trading date in YYYY-MM-DD format.
+                        O:
+                          type: number
+                          description: Opening price.
+                        H:
+                          type: number
+                          description: Highest price of the day (use this field to find the maximum price).
+                        L:
+                          type: number
+                          description: Lowest price of the day.
+                        C:
+                          type: number
+                          description: Closing price.
+                        V:
+                          type: number
+                          description: Total trading volume.
+                        TurnoverValue:
+                          type: number
+                          description: Total turnover value in JPY.
+                        AdjustmentC:
+                          type: number
+                          description: Split/dividend-adjusted closing price.
+                  pagination_key:
+                    type: string
+                    nullable: true
+                    description: Pass this value as pagination_key param to fetch the next page. Null when no more pages.

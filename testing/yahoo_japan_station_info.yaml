@@ -1,0 +1,68 @@
+openapi: 3.0.3
+info:
+  title: Japan Station Information Acquisition API
+  version: 1.0.0
+  description: Retrieve all stations on a specific train or subway line in Japan. Free API, no authentication required.
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Stations by Line
+      operationId: getStationsByLine
+      description: "Returns all stations on the specified railway line in order, with name, coordinates, and adjacent stations (prev/next). USE FOR DIRECTIONS: after finding the nearest stations via getNearestStations, call this with the shared line name to get the full ordered station list. Then find the index of the start station and end station in the list to count stops and determine direction of travel (towards which terminal)."
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getStations]
+            default: getStations
+          description: API method name. Always getStations for this operation.
+        - name: line
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Railway line name in Japanese, e.g. JR山手線, 東海道新幹線, 東京メトロ銀座線, 阪急神戸線."
+      responses:
+        "200":
+          description: All stations on the specified line.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      station:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              description: Station name in Japanese.
+                            prefecture:
+                              type: string
+                              description: Prefecture the station is in.
+                            line:
+                              type: string
+                              description: Line name.
+                            x:
+                              type: string
+                              description: Longitude (WGS84).
+                            y:
+                              type: string
+                              description: Latitude (WGS84).
+                            postal:
+                              type: string
+                              description: 7-digit postal code.
+                            prev:
+                              type: string
+                              description: Previous station on the line.
+                            next:
+                              type: string
+                              description: Next station on the line.

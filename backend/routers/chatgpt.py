@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import httpx
 from typing import Any
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 from openai import AsyncOpenAI, AsyncAzureOpenAI
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 from database import get_db
 from utils.encryption import decrypt_creds
 from models.api_definition import ApiDefinition, ApiEndpoint
@@ -295,6 +298,10 @@ async def chat_with_tools(
         if current_user.credits <= 0:
             raise HTTPException(402, "insufficient_credits")
 
+    logger.info("──────────────────────────────────────────────")
+    logger.info("New chat request from %s", current_user.email)
+    logger.info("User question: %s", req.message[:200])
+
     if req.api_ids:
         apis = db.query(ApiDefinition).filter(
             ApiDefinition.id.in_(req.api_ids), ApiDefinition.user_id == current_user.id
@@ -313,7 +320,13 @@ async def chat_with_tools(
     for api in apis:
         all_tools.extend(api_to_tools(api))
 
+    logger.info(
+        "Loaded %d connected API(s) → %d tool(s) available: %s",
+        len(apis), len(all_tools), ", ".join(a.name for a in apis),
+    )
+
     if not all_tools:
+        logger.warning("No APIs are connected — cannot answer. Connect at least one API first.")
         return ChatResponse(response="", tool_calls=[], model="none", status="NO_TOOLS_CONNECTED")
 
     # ── Context Layer: always runs so session_id is always assigned ───────────
@@ -325,6 +338,7 @@ async def chat_with_tools(
     )
 
     if _is_mock_or_missing_openai_key():
+        logger.info("Mock mode is ON — skipping real LLM call, returning a placeholder response")
         lower_message = req.message.lower()
         if "weather" in lower_message:
             mock_response = (
@@ -346,14 +360,29 @@ async def chat_with_tools(
         )
 
     client, deployment = _build_llm_client()
+    if settings.azure_openai_endpoint:
+        logger.info(
+            "Using Azure OpenAI  (model: %s, endpoint: %s)",
+            settings.azure_openai_deployment, settings.azure_openai_endpoint,
+        )
+    else:
+        logger.info("Using OpenAI (non-Azure)")
 
     records: list[ToolCallRecord] = []
     turn_additions: list[dict] = []
     total_prompt_tokens = 0
     total_completion_tokens = 0
 
-    for _ in range(5):
-        kwargs: dict = {"model": deployment or "gpt-4o", "messages": messages}
+    history_turns = (len(messages) - 1) // 2  # exclude system prompt
+    logger.info("Session history: %d prior turn(s) in memory", history_turns)
+
+    model_name = deployment or "gpt-4o"
+    for turn in range(5):
+        logger.info(
+            "Asking AI (round %d) — conversation so far: %d message(s), %d tool(s) available",
+            turn + 1, len(messages), len(all_tools),
+        )
+        kwargs: dict = {"model": model_name, "messages": messages}
         if all_tools:
             kwargs["tools"] = all_tools
             kwargs["tool_choice"] = "auto"
@@ -374,8 +403,58 @@ async def chat_with_tools(
         if resp.usage:
             total_prompt_tokens     += resp.usage.prompt_tokens
             total_completion_tokens += resp.usage.completion_tokens
+            logger.info(
+                "AI processed %d tokens (input) and wrote %d tokens (output)",
+                resp.usage.prompt_tokens, resp.usage.completion_tokens,
+            )
 
         if not msg.tool_calls:
+            # AI answered without calling any tool on this turn
+            if not records:
+                # No tools were called — show AI explanation but prepend a clear warning
+                ai_text = msg.content or ""
+                logger.warning("NO TOOL CALLED — AI answered without any API call.")
+                logger.warning("AI explanation: %s", ai_text[:300])
+                logger.warning(
+                    "Connected APIs that were available: %s",
+                    ", ".join(a.name for a in apis),
+                )
+                # Prepend a clear source warning so the user knows this is not from an API
+                warning = (
+                    "⚠ Note: No connected API was called to answer this question. "
+                    "The response below is based on the AI's own knowledge, not live API data.\n\n"
+                )
+                final_text = warning + ai_text
+                context_layer.save_turn(session_id, req.message, [
+                    {"role": "assistant", "content": final_text}
+                ])
+                return ChatResponse(
+                    response=final_text,
+                    tool_calls=[],
+                    model="gpt-4o",
+                    session_id=session_id,
+                )
+
+            # Tools were called — AI is now summarising API data (this is correct)
+            tools_used = list({r.endpoint for r in records})
+            logger.info("--- SOURCE PROOF ---")
+            for r in records:
+                logger.info(
+                    "[SOURCE: API] endpoint=%s  api=%s  args=%s",
+                    r.endpoint, r.api_name,
+                    {k: v for k, v in r.arguments.items() if k not in ("api_key", "appid", "x-api-key")},
+                )
+                logger.info(
+                    "[SOURCE: API] data received: %s%s",
+                    r.result[:400], "..." if len(r.result) > 400 else "",
+                )
+            logger.info("AI summarised data from %d tool(s): %s", len(tools_used), ", ".join(tools_used))
+            answer_preview = (msg.content or "")[:300].replace("\n", " ")
+            logger.info("Final answer: %s%s", answer_preview, "..." if len(msg.content or "") > 300 else "")
+            logger.info(
+                "DONE — total tokens: %d input + %d output",
+                total_prompt_tokens, total_completion_tokens,
+            )
             final_msg = {"role": "assistant", "content": msg.content or ""}
             turn_additions.append(final_msg)
             context_layer.save_turn(session_id, req.message, turn_additions)
@@ -388,6 +467,9 @@ async def chat_with_tools(
                 session_id=session_id,
             )
 
+        tool_names = [tc.function.name for tc in msg.tool_calls]
+        logger.info("AI wants to call %d tool(s): %s", len(tool_names), ", ".join(tool_names))
+
         # Save assistant message with tool_calls before results (OpenAI ordering)
         assistant_dict = msg.model_dump(exclude_unset=True)
         messages.append(assistant_dict)
@@ -397,6 +479,16 @@ async def chat_with_tools(
         results = await tool_orchestrator.execute_all(msg.tool_calls, db, dry_run=req.dry_run)
 
         for er in results:
+            status = "SUCCESS" if er.success else "FAILED"
+            safe_args = {k: v for k, v in er.arguments.items() if k not in ("api_key", "appid", "x-api-key")}
+            logger.info(
+                "[API CALL %s] endpoint=%s  |  api=%s  |  args=%s",
+                status, er.endpoint, er.api_name, safe_args,
+            )
+            logger.info(
+                "  └─ [API RESPONSE] %s%s",
+                er.result_text[:400], "..." if len(er.result_text) > 400 else "",
+            )
             # Persist to ToolCallLog if we resolved the endpoint
             api_obj, ep_obj = resolve_tool_call(er.tool_name, db)
             if api_obj:
@@ -427,8 +519,9 @@ async def chat_with_tools(
             messages.append(tool_msg)
             turn_additions.append(tool_msg)
 
+    logger.info("Max rounds reached — asking AI to summarise everything collected so far")
     try:
-        final = await client.chat.completions.create(model=deployment or "gpt-4o", messages=messages)
+        final = await client.chat.completions.create(model=model_name, messages=messages)
     except Exception:
         if deployment and _azure_client_configured():
             raise
@@ -444,6 +537,14 @@ async def chat_with_tools(
     if final.usage:
         total_prompt_tokens     += final.usage.prompt_tokens
         total_completion_tokens += final.usage.completion_tokens
+    tools_used = list({r.endpoint for r in records})
+    answer_text = final.choices[0].message.content or ""
+    logger.info(
+        "DONE — tools used: %s  |  total tokens: %d input + %d output",
+        ", ".join(tools_used) if tools_used else "none",
+        total_prompt_tokens, total_completion_tokens,
+    )
+    logger.info("Answer: %s%s", answer_text[:200].replace("\n", " "), "..." if len(answer_text) > 200 else "")
     final_msg = {"role": "assistant", "content": final.choices[0].message.content or ""}
     turn_additions.append(final_msg)
     context_layer.save_turn(session_id, req.message, turn_additions)

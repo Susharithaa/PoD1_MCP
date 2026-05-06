@@ -1,0 +1,33 @@
+Tool called: getStationsByLine
+Stations found: 30
+Final answer:
+The JR Yamanote Line (山手線) includes the following 30 stations:
+
+1. 品川 (Shinagawa)
+2. 大崎 (Osaki)
+3. 五反田 (Gotanda)
+4. 目黒 (Meguro)
+5. 恵比寿 (Ebisu)
+6. 渋谷 (Shibuya)
+7. 原宿 (Harajuku)
+8. 代々木 (Yoyogi)
+9. 新宿 (Shinjuku)
+10. 新大久保 (Shin-Okubo)
+11. 高田馬場 (Takadanobaba)
+12. 目白 (Mejiro)
+13. 池袋 (Ikebukuro)
+14. 大塚 (Otsuka)
+15. 巣鴨 (Sugamo)
+16. 駒込 (Komagome)
+17. 田端 (Tabata)
+18. 西日暮里 (Nishi-Nippori)
+19. 日暮里 (Nippori)
+20. 鶯谷 (Uguisudani)
+21. 上野 (Ueno)
+22. 御徒町 (Okachimachi)
+23. 秋葉原 (Akihabara)
+24. 神田 (Kanda)
+25. 東京 (Tokyo)
+26. 有楽町 (Yurakucho)
+27. 新橋 (Shimbashi)
+28. 浜松町 (Hamamatsucho

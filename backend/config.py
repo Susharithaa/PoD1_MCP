@@ -35,9 +35,19 @@ class Settings(BaseSettings):
     azure_openai_api_key: str = ""
     azure_openai_endpoint: str = ""
     azure_openai_base_url: str = ""
-    azure_openai_api_version: str = "2024-02-15-preview"
-    azure_openai_deployment: str = ""
+    azure_openai_api_version: str = "2025-01-01-preview"
+    azure_openai_deployment: str = "gpt-4o"
+    serpapi_key: str = ""
+    yahoo_japan_app_id: str = ""
+    jquants_api_key: str = ""
     mock_llm: bool = False
+
+    @property
+    def effective_openai_key(self) -> str:
+        """Return the Azure key when endpoint is set, otherwise the OpenAI key."""
+        if self.azure_openai_endpoint and self.azure_openai_api_key:
+            return self.azure_openai_api_key
+        return self.openai_api_key
     database_url: str = "sqlite:///./mcp_hub.db"
     upload_dir: str = "./uploads"
     cors_origins: str = "http://localhost:5173"

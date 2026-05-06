@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: Japan Nearest Station Information Acquisition API
+  version: 1.0.0
+  description: Find the nearest train and subway stations to a GPS coordinate in Japan. Free API, no authentication required.
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Nearest Stations by Coordinates
+      operationId: getNearestStations
+      description: "Returns the closest train and subway stations to the given longitude and latitude, including walking distance, the line name, and the previous/next station on that line. USE FOR DIRECTIONS: call this twice — once for the start location and once for the end location — to find the nearest stations and which lines serve them. Then call getStationsByLine on the shared line to get all stations in order and count the stops between the two."
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getStations]
+            default: getStations
+          description: API method name. Always getStations for this operation.
+        - name: x
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Longitude of the location (WGS84), e.g. 139.7016.
+        - name: y
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Latitude of the location (WGS84), e.g. 35.6580.
+      responses:
+        "200":
+          description: Nearest stations sorted by distance.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      station:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              description: Station name in Japanese.
+                            prefecture:
+                              type: string
+                              description: Prefecture the station is in.
+                            line:
+                              type: string
+                              description: Line name.
+                            x:
+                              type: string
+                              description: Station longitude.
+                            y:
+                              type: string
+                              description: Station latitude.
+                            postal:
+                              type: string
+                              description: 7-digit postal code.
+                            distance:
+                              type: string
+                              description: Distance from the given coordinates, e.g. 50m, 120m.
+                            prev:
+                              type: string
+                              description: Previous station on the line.
+                            next:
+                              type: string
+                              description: Next station on the line.

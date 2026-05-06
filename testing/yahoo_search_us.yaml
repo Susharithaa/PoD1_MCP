@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: Yahoo Search US via SerpApi
+  version: 1.0.0
+  description: Search Yahoo US results through SerpApi for MCP Hub testing.
+servers:
+  - url: https://serpapi.com
+security:
+  - serpApiKey: []
+components:
+  securitySchemes:
+    serpApiKey:
+      type: apiKey
+      in: query
+      name: api_key
+paths:
+  /search:
+    get:
+      summary: Search Yahoo US
+      operationId: searchYahooUS
+      description: Run a Yahoo US web search and return structured search results.
+      parameters:
+        - name: engine
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [yahoo]
+            default: yahoo
+          description: Search engine selector. Always use yahoo.
+        - name: p
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query, for example best pizza in New York.
+        - name: vc
+          in: query
+          required: false
+          schema:
+            type: string
+            default: us
+          description: Country code for localized Yahoo search results. Defaults to us.
+        - name: vl
+          in: query
+          required: false
+          schema:
+            type: string
+            default: lang_en
+          description: Language filter, for example lang_en.
+        - name: num
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of results to return per page.
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination. Use multiples of num to get subsequent pages.
+      responses:
+        "200":
+          description: Yahoo US search results from SerpApi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  search_metadata:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      total_time_taken:
+                        type: number
+                  search_parameters:
+                    type: object
+                    properties:
+                      engine:
+                        type: string
+                      p:
+                        type: string
+                      vc:
+                        type: string
+                      vl:
+                        type: string
+                  search_information:
+                    type: object
+                    properties:
+                      total_results:
+                        type: string
+                      query_displayed:
+                        type: string
+                  organic_results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position:
+                          type: integer
+                        title:
+                          type: string
+                        link:
+                          type: string
+                        displayed_link:
+                          type: string
+                        snippet:
+                          type: string
+                  related_searches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        query:
+                          type: string
+                        link:
+                          type: string

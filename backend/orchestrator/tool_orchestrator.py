@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -20,6 +21,9 @@ import httpx
 from sqlalchemy.orm import Session
 
 from config import settings
+
+logger = logging.getLogger(__name__)
+
 from models.api_definition import ApiDefinition, ApiEndpoint
 from translators.openai_translator import resolve_tool_call
 from utils.encryption import decrypt_creds
@@ -30,7 +34,7 @@ from utils.safety import is_dry_run_enabled, is_emergency_stop_enabled, max_tool
 
 MAX_RETRIES     = 0
 RETRY_DELAY_S   = 0.5   # base delay; doubles each attempt
-TOOL_TIMEOUT_S  = 5.0
+TOOL_TIMEOUT_S  = 15.0
 
 
 @dataclass
@@ -62,6 +66,7 @@ class ToolOrchestrator:
         Dispatch all tool_calls from a single GPT-4o response in parallel.
         Returns one ExecutionResult per tool_call, in original order.
         """
+        logger.info("Running %d tool call(s) in parallel...", len(tool_calls))
         tasks = [self._execute_one(tc, db, dry_run=dry_run) for tc in tool_calls]
         return list(await asyncio.gather(*tasks))
 
@@ -75,8 +80,15 @@ class ToolOrchestrator:
             args = {}
 
         api_obj, ep_obj = resolve_tool_call(tool_name, db)
+        logger.info(
+            "Tool '%s' found in DB → API: %s, Endpoint: %s",
+            tool_name,
+            api_obj.name if api_obj else "NOT FOUND",
+            ep_obj.name if ep_obj else "NOT FOUND",
+        )
 
         if not api_obj or not ep_obj:
+            logger.warning("Tool '%s' is not registered in the database — skipping it", tool_name)
             return ExecutionResult(
                 tool_call_id=tc.id,
                 tool_name=tool_name,
@@ -92,6 +104,7 @@ class ToolOrchestrator:
 
         missing = _missing_required_params(ep_obj, args)
         if missing:
+            logger.warning("Cannot call '%s' — missing required parameter(s): %s", tool_name, ", ".join(missing))
             return ExecutionResult(
                 tool_call_id=tc.id,
                 tool_name=tool_name,
@@ -132,7 +145,14 @@ class ToolOrchestrator:
                 skipped=True,
             )
 
+        safe_args = {k: v for k, v in args.items() if k not in ("api_key", "appid")}
+        logger.info("Calling '%s' with arguments: %s", tool_name, safe_args)
         result_text, success, attempts = await self._execute_with_retry(api_obj, ep_obj, args)
+        outcome = "succeeded" if success else "FAILED"
+        logger.info(
+            "Tool '%s' %s (attempt %d)  |  response preview: %s",
+            tool_name, outcome, attempts, result_text[:150],
+        )
 
         return ExecutionResult(
             tool_call_id=tc.id,
@@ -179,6 +199,7 @@ async def _http_call(
     try:
         validate_outbound_url(url)
     except ValueError as exc:
+        logger.warning("Blocked request to %s — %s", url, exc)
         return f"Blocked outbound request: {exc}", False
     args = dict(arguments)
 
@@ -194,6 +215,9 @@ async def _http_call(
     if extra_params:
         args.update(extra_params)
 
+    safe_params = {k: ("***" if k in ("api_key", "appid") else v) for k, v in args.items()}
+    logger.info("Sending %s request to: %s  with params: %s", ep.method.upper(), url, safe_params)
+
     try:
         async with httpx.AsyncClient(timeout=TOOL_TIMEOUT_S, verify=not settings.allow_insecure_ssl) as client:
             method = ep.method.upper()
@@ -206,10 +230,19 @@ async def _http_call(
             else:
                 resp = await client.request(method, url, json=args, auth=req_auth, headers=extra_headers, timeout=timeout)
         duration_ms = int((time.perf_counter() - started) * 1000)
+        logger.info(
+            "API responded: HTTP %d in %dms  |  response size: %d chars  |  data preview: %s",
+            resp.status_code, duration_ms, len(resp.text), resp.text[:300],
+        )
         if duration_ms > max_tool_execution_ms():
+            logger.warning(
+                "Request took too long (%dms, limit is %dms) — result discarded",
+                duration_ms, max_tool_execution_ms(),
+            )
             return json.dumps({"status": "SLA_BREACH", "duration_ms": duration_ms, "budget_ms": max_tool_execution_ms()}), False
-        return str(mask_sensitive(resp.text[:2000])), resp.status_code < 400
+        return str(mask_sensitive(resp.text[:30000])), resp.status_code < 400
     except Exception as exc:
+        logger.error("HTTP request to %s failed — %s", url, exc)
         return f"Request failed: {exc}", False
 
 

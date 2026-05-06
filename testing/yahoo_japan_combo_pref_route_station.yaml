@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: Japan Prefecture-Route-Station Connected Combo Box API
+  version: 1.0.0
+  description: "Step 2 of the Prefecture→Route→Station cascade: given a prefecture name, returns all lines in that prefecture. Then call getStations with the chosen line to complete the cascade. Free API, no authentication required."
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Lines for Prefecture-Route-Station Combo
+      operationId: getLinesByPrefectureCombo
+      description: "Cascade step 2: provide a prefecture name to get all routes in it. Then use a route name with getStations to complete the Prefecture→Route→Station selection chain."
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getLines]
+            default: getLines
+          description: API method name. Always getLines for this operation.
+        - name: prefecture
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Prefecture name in Japanese, e.g. 東京都, 大阪府, 神奈川県, 愛知県, 北海道."
+      responses:
+        "200":
+          description: Routes in the selected prefecture, to populate the route dropdown.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      line:
+                        type: array
+                        items:
+                          type: string
+                        description: Route names to show in the route combo box.

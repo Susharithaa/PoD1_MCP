@@ -1,0 +1,45 @@
+openapi: 3.0.3
+info:
+  title: Japan Route Acquisition API
+  version: 1.0.0
+  description: Retrieve all train and subway lines in a major regional area of Japan. Free API, no authentication required.
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Lines by Area
+      operationId: getLinesByArea
+      description: Returns all railway and subway lines in the specified regional area of Japan. Use the returned line names to fetch station lists via the Station Information API.
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getLines]
+            default: getLines
+          description: API method name. Always getLines for this operation.
+        - name: area
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄]
+          description: "Regional area name in Japanese: 北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄."
+      responses:
+        "200":
+          description: List of train and subway lines in the area.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      line:
+                        type: array
+                        items:
+                          type: string
+                        description: Line names, e.g. JR山手線, 東京メトロ丸ノ内線, 近鉄奈良線.

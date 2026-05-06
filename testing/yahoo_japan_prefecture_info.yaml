@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: Japan Prefecture Information Acquisition API
+  version: 1.0.0
+  description: Retrieve all train and subway lines in a specific Japanese prefecture. Free API, no authentication required.
+servers:
+  - url: http://express.heartrails.com
+paths:
+  /api/json:
+    get:
+      summary: Get Lines by Prefecture
+      operationId: getLinesByPrefecture
+      description: Returns all railway and subway lines operating in the given prefecture. Use the returned line names to fetch station lists.
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getLines]
+            default: getLines
+          description: API method name. Always getLines for this operation.
+        - name: prefecture
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Prefecture name in Japanese, e.g. 東京都, 大阪府, 神奈川県, 愛知県, 福岡県."
+      responses:
+        "200":
+          description: List of train lines in the specified prefecture.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      line:
+                        type: array
+                        items:
+                          type: string
+                        description: List of line names, e.g. JR中央線, 東京メトロ銀座線.

@@ -2,7 +2,7 @@
 
 import json
 import logging
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, AsyncAzureOpenAI
 from config import settings
 
 _client: AsyncOpenAI | None = None
@@ -28,7 +28,14 @@ def _should_mock() -> bool:
 def get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
-        _client = AsyncOpenAI(api_key=settings.openai_api_key)
+        if settings.azure_openai_endpoint:
+            _client = AsyncAzureOpenAI(
+                azure_endpoint=settings.azure_openai_endpoint,
+                api_key=settings.effective_openai_key,
+                api_version=settings.azure_openai_api_version,
+            )
+        else:
+            _client = AsyncOpenAI(api_key=settings.effective_openai_key)
     return _client
 
 
