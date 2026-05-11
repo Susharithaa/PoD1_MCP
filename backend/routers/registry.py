@@ -82,6 +82,8 @@ def update_auth(
     api = _get_owned_api(api_id, db, current_user)
     for ep in api.endpoints:
         ep.auth_type = body.auth_type
+        if body.auth_credentials is not None:
+            ep.auth_credentials = body.auth_credentials
     api.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(api)

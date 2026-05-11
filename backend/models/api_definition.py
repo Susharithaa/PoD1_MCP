@@ -31,6 +31,13 @@ class ApiDefinition(Base):
         "ApiEndpoint", back_populates="definition", cascade="all, delete-orphan"
     )
 
+    @property
+    def has_auth(self) -> bool:
+        return any(
+            ep.auth_type and ep.auth_type not in ("NONE", None)
+            for ep in self.endpoints
+        )
+
 
 class ApiEndpoint(Base):
     __tablename__ = "api_endpoints"

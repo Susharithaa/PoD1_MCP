@@ -21,7 +21,9 @@ export default function Register() {
       await register(email, password, fullName || undefined);
       navigate("/");
     } catch (err) {
-      setError(err?.response?.data?.detail || "Registration failed. Please try again.");
+      const detail = err?.response?.data?.detail;
+      const status = err?.response?.status;
+      setError(detail || (status ? `Registration failed (${status}). Please try again.` : "Registration failed. Please try again."));
     } finally {
       setLoading(false);
     }

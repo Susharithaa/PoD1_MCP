@@ -101,7 +101,7 @@ function AdminPanel() {
   const pendingCount = chatUsers.filter(u => u.chat_status === "pending").length;
 
   return (
-    <div className="max-w-6xl mx-auto animate-slide-up space-y-5">
+    <div className="animate-slide-up space-y-5">
       <div className="card p-6">
         <p className="eyebrow">Admin</p>
         <h1 className="h-page mt-2">Operations and controls</h1>

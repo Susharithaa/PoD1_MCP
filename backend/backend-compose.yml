@@ -1,0 +1,28 @@
+services:
+  backend:
+    image: python:3.11-slim
+    container_name: mcp-hub-backend
+    working_dir: /app
+    command: >
+      sh -c "pip install --no-cache-dir -r backend/requirements.txt &&
+             python /app/run.py"
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env.vm
+    environment:
+      PYTHONUNBUFFERED: "1"
+      MCP_HUB_CONTAINER: "1"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-mock}
+      MOCK_LLM: ${MOCK_LLM:-false}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me}
+      CORS_ORIGINS: http://10.126.104.12:8001,http://localhost:8001
+    volumes:
+      - ..:/app
+      - backend_data:/app/data
+      - ./.env:/app/backend/.env:ro
+    restart: unless-stopped
+
+volumes:
+  backend_data:

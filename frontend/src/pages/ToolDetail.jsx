@@ -11,7 +11,28 @@ const METHOD_COLORS = {
   PATCH:  { text: "#a78bfa", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.25)" },
   DELETE: { text: "#ef4444", bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.25)" },
 };
-const AUTH_TYPES   = ["NONE", "BEARER", "API_KEY", "BASIC"];
+const AUTH_TYPES   = ["NONE", "BEARER", "API_KEY", "BASIC", "OAUTH2"];
+
+// Maps HITLValidator's lowercase auth values → ToolDetail's uppercase dropdown values
+const AUTH_TYPE_NORM = {
+  none: "NONE", bearer: "BEARER", basic: "BASIC",
+  api_key: "API_KEY", api_key_query: "API_KEY", oauth2: "OAUTH2",
+};
+function normalizeAuthType(t) {
+  if (!t) return "NONE";
+  return AUTH_TYPE_NORM[t.toLowerCase()] || t.toUpperCase();
+}
+
+const AUTH_CRED_FIELDS = {
+  BEARER:  [{ key: "token",         label: "Bearer Token",  secret: true }],
+  API_KEY: [{ key: "header_name",   label: "Header Name",   secret: false, placeholder: "X-API-Key" },
+            { key: "value",         label: "Key Value",     secret: true }],
+  BASIC:   [{ key: "username",      label: "Username",      secret: false },
+            { key: "password",      label: "Password",      secret: true }],
+  OAUTH2:  [{ key: "client_id",     label: "Client ID",     secret: false },
+            { key: "client_secret", label: "Client Secret", secret: true },
+            { key: "token_url",     label: "Token URL",     secret: false }],
+};
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const PARAM_TYPES  = ["string", "integer", "number", "boolean", "array", "object"];
 const ACCEPTED_EXTS = ".json,.yaml,.yml,.pdf,.txt,.md,.docx";
@@ -55,8 +76,9 @@ export default function ToolDetail() {
   const [meta,        setMeta]        = useState({ name: "", description: "", base_url: "", version: "" });
   const [metaDirty,   setMetaDirty]   = useState(false);
   const [metaSaving,  setMetaSaving]  = useState(false);
-  const [globalAuth,  setGlobalAuth]  = useState("NONE");
-  const [authApplying,setAuthApplying]= useState(false);
+  const [globalAuth,      setGlobalAuth]      = useState("NONE");
+  const [globalAuthCreds, setGlobalAuthCreds] = useState({});
+  const [authApplying,    setAuthApplying]    = useState(false);
   const [endpoints,   setEndpoints]   = useState([]);
 
   // add-mode: null | "picker" | "manual" | "doc"
@@ -84,11 +106,25 @@ export default function ToolDetail() {
     setMeta({ name: data.name || "", description: data.description || "", base_url: data.base_url || "", version: data.version || "1.0.0" });
     const eps = data.endpoints || [];
     setEndpoints(eps);
-    if (eps.length) {
-      const types  = eps.map(e => e.auth_type).filter(Boolean);
-      const counts = types.reduce((m, t) => { m[t] = (m[t] || 0) + 1; return m; }, {});
-      setGlobalAuth(Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "NONE");
+
+    // Find the dominant non-NONE auth type from endpoints
+    const epAuthTypes = eps
+      .map(e => normalizeAuthType(e.auth_type))
+      .filter(t => t && t !== "NONE");
+
+    if (epAuthTypes.length > 0) {
+      const counts   = epAuthTypes.reduce((m, t) => { m[t] = (m[t] || 0) + 1; return m; }, {});
+      const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+      setGlobalAuth(dominant);
+      const credSrc = eps.find(e => normalizeAuthType(e.auth_type) === dominant && e.auth_credentials);
+      setGlobalAuthCreds(credSrc?.auth_credentials || {});
+    } else {
+      // Fall back to API-level auth_type (set by HITLValidator when authMode === "same")
+      const apiAuth = normalizeAuthType(data.auth_type);
+      setGlobalAuth(apiAuth);
+      setGlobalAuthCreds(apiAuth !== "NONE" ? (data.auth_credentials || {}) : {});
     }
+
     setMetaDirty(false);
   }
 
@@ -99,7 +135,12 @@ export default function ToolDetail() {
   }
 
   async function applyGlobalAuth() {
-    try { setAuthApplying(true); const u = await registryApi.updateAuth(id, globalAuth); applyApiState(u); }
+    try {
+      setAuthApplying(true);
+      const creds = globalAuth === "NONE" ? null : globalAuthCreds;
+      const u = await registryApi.updateAuth(id, globalAuth, creds);
+      applyApiState(u);
+    }
     catch { alert("Failed to update auth."); }
     finally { setAuthApplying(false); }
   }
@@ -167,12 +208,12 @@ export default function ToolDetail() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto animate-slide-up">
+    <div className="animate-slide-up">
       {/* Breadcrumb */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2 text-sm text-zinc-500">
           <Link to="/registry" className="hover:text-zinc-300 transition-colors flex items-center gap-1">
-            <BackIcon /> API Registry
+            <BackIcon /> MCP Registry
           </Link>
           <ChevronRightSmIcon />
           <span className="text-zinc-300 font-medium truncate max-w-xs">{meta.name || api?.name}</span>
@@ -213,10 +254,10 @@ export default function ToolDetail() {
       {/* Auth */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 mb-4">
         <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Authentication</h2>
-        <div className="flex items-end gap-3">
+        <div className="flex items-end gap-3 mb-3">
           <div className="flex-1 max-w-xs">
             <label className="block text-[10px] text-zinc-500 mb-1.5 uppercase tracking-wider">Auth Type</label>
-            <select value={globalAuth} onChange={e => setGlobalAuth(e.target.value)} className="field-input">
+            <select value={globalAuth} onChange={e => { setGlobalAuth(e.target.value); setGlobalAuthCreds({}); }} className="field-input">
               {AUTH_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
@@ -225,7 +266,24 @@ export default function ToolDetail() {
             {authApplying ? "Applying…" : "Apply to All Endpoints"}
           </button>
         </div>
-        <p className="text-[11px] text-zinc-600 mt-2">You can also change auth per endpoint individually below.</p>
+        {(AUTH_CRED_FIELDS[globalAuth] || []).length > 0 && (
+          <div className="grid grid-cols-2 gap-2 mt-1 mb-3">
+            {AUTH_CRED_FIELDS[globalAuth].map(f => (
+              <div key={f.key}>
+                <label className="block text-[10px] text-zinc-500 mb-1 uppercase tracking-wider">{f.label}</label>
+                <input
+                  type={f.secret ? "password" : "text"}
+                  placeholder={f.placeholder || (f.secret ? "••••••••" : "")}
+                  value={globalAuthCreds[f.key] || ""}
+                  onChange={e => setGlobalAuthCreds(c => ({ ...c, [f.key]: e.target.value }))}
+                  className="field-input font-mono text-xs"
+                  autoComplete="off"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-zinc-600">You can also change auth per endpoint individually below.</p>
       </div>
 
       {/* Endpoints */}
@@ -457,8 +515,12 @@ function DocImportPanel({ toolId, onImported, onCancel }) {
       }
     }
     try { await agentApi.discard(sessionId); } catch {}
-    if (errs.length) setImportErr(errs);
-    onImported(created);
+    if (errs.length) {
+      setImportErr(errs);
+      // Stay on importing stage so errors are visible; user clicks Done to close
+    } else {
+      onImported(created);
+    }
   }
 
   /* ── Stage label for header ── */
@@ -699,15 +761,35 @@ function DocImportPanel({ toolId, onImported, onCancel }) {
         </>
       )}
 
-      {/* ── Importing progress ── */}
+      {/* ── Importing progress / partial errors ── */}
       {stage === "importing" && (
-        <div className="flex items-center gap-3 px-4 py-5 rounded-xl bg-zinc-800/40">
-          <div className="animate-spin w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full flex-shrink-0" />
-          <div>
-            <p className="text-sm text-zinc-300 font-medium">Importing endpoints…</p>
-            <p className="text-xs text-zinc-600 mt-0.5">Adding {selected.size} endpoint{selected.size !== 1 ? "s" : ""} to this tool</p>
+        importErr.length > 0 ? (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-950/20 p-4">
+            <p className="text-sm font-semibold text-amber-300 mb-2">
+              Partial import — {selected.size - importErr.length} of {selected.size} succeeded
+            </p>
+            <p className="text-xs text-zinc-500 mb-2">Failed to import:</p>
+            <ul className="space-y-1 mb-4">
+              {importErr.map(e => (
+                <li key={e} className="text-xs font-mono text-red-400 bg-zinc-900/60 rounded px-2 py-1">{e}</li>
+              ))}
+            </ul>
+            <button
+              onClick={() => onImported([])}
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-zinc-700 hover:bg-zinc-600 text-zinc-200 transition-colors"
+            >
+              Done
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-3 px-4 py-5 rounded-xl bg-zinc-800/40">
+            <div className="animate-spin w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full flex-shrink-0" />
+            <div>
+              <p className="text-sm text-zinc-300 font-medium">Importing endpoints…</p>
+              <p className="text-xs text-zinc-600 mt-0.5">Adding {selected.size} endpoint{selected.size !== 1 ? "s" : ""} to this tool</p>
+            </div>
+          </div>
+        )
       )}
     </div>
   );

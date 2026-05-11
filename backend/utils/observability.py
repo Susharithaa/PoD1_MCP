@@ -102,13 +102,12 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             if settings.max_request_bytes and content_length > settings.max_request_bytes:
                 return JSONResponse({"detail": "Request body too large"}, status_code=413)
             if settings.read_only_mode and request.method not in {"GET", "HEAD", "OPTIONS"}:
-                if not request.url.path.startswith(("/health", "/api/auth/login", "/api/auth/verify-otp")):
+                if not request.url.path.startswith(("/health", "/api/auth/login")):
                     return JSONResponse({"detail": "Read-only mode is enabled"}, status_code=423)
             if is_emergency_stop_enabled() and request.method not in {"GET", "HEAD", "OPTIONS"}:
                 allowed = (
                     "/health",
                     "/api/auth/login",
-                    "/api/auth/verify-otp",
                     "/api/admin/system-controls",
                 )
                 if not request.url.path.startswith(allowed):

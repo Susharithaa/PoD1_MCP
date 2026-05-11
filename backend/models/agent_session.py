@@ -15,6 +15,7 @@ class AgentSession(Base):
     # ── inputs ───────────────────────────────────────────────────────────────
     raw_input: Mapped[str | None] = mapped_column(Text, nullable=True)
     file_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    original_filename: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # ── agent outputs (each step writes its result here) ─────────────────────
     extracted_schema: Mapped[Any] = mapped_column(JSON, nullable=True)
@@ -55,6 +56,14 @@ class AgentSession(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    @property
+    def api_name(self) -> str | None:
+        for src in (self.final_api, self.draft_api):
+            name = (src or {}).get("name")
+            if name:
+                return name
+        return None
 
     def log_error(self, step: str, error: str) -> None:
         if self.error_log is None:

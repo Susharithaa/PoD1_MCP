@@ -9,10 +9,12 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     const html = document.documentElement;
-    if (theme === "light") {
-      html.classList.add("light");
-    } else {
+    if (theme === "dark") {
+      html.classList.add("dark");
       html.classList.remove("light");
+    } else {
+      html.classList.remove("dark");
+      html.classList.add("light");
     }
     localStorage.setItem("mcp-hub-theme", theme);
   }, [theme]);

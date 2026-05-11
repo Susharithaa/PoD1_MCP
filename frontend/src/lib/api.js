@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const http = axios.create({ baseURL: "http://localhost:8000" });
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  `${window.location.protocol}//${window.location.hostname}:8000`;
+
+const http = axios.create({ baseURL: apiBaseUrl });
 
 http.interceptors.request.use(config => {
   const token = localStorage.getItem("mcp_token");
@@ -24,11 +28,9 @@ export const authApi = {
     http.post("/api/auth/register", { email, password, full_name: fullName }).then(r => r.data),
   login: (email, password) =>
     http.post("/api/auth/login", { email, password }).then(r => r.data),
-  verifyOtp: (email, otp) =>
-    http.post("/api/auth/verify-otp", { email, otp }).then(r => r.data),
   me: () => http.get("/api/auth/me").then(r => r.data),
-  googleLoginUrl:    () => "http://localhost:8000/api/auth/google",
-  githubLoginUrl: () => "http://localhost:8000/api/auth/github",
+  googleLoginUrl:    () => `${apiBaseUrl}/api/auth/google`,
+  githubLoginUrl: () => `${apiBaseUrl}/api/auth/github`,
 };
 
 export const adminApi = {
@@ -95,7 +97,7 @@ export const registryApi = {
   list:           ()             => http.get("/api/registry/").then(r => r.data),
   get:            (id)           => http.get(`/api/registry/${id}`).then(r => r.data),
   update:         (id, data)     => http.patch(`/api/registry/${id}`, data).then(r => r.data),
-  updateAuth:     (id, authType) => http.patch(`/api/registry/${id}/auth`, { auth_type: authType }).then(r => r.data),
+  updateAuth:     (id, authType, authCreds) => http.patch(`/api/registry/${id}/auth`, { auth_type: authType, auth_credentials: authCreds || null }).then(r => r.data),
   delete:         (id)           => http.delete(`/api/registry/${id}`),
   createEndpoint: (id, data)     => http.post(`/api/registry/${id}/endpoints`, data).then(r => r.data),
   updateEndpoint: (id, epId, data) => http.put(`/api/registry/${id}/endpoints/${epId}`, data).then(r => r.data),

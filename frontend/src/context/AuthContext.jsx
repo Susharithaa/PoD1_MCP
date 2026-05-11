@@ -18,17 +18,18 @@ export function AuthProvider({ children }) {
 
   async function _hydrateFromToken(token) {
     localStorage.setItem("mcp_token", token);
-    const me = await authApi.me();
-    setUser(me);
+    try {
+      const me = await authApi.me();
+      setUser(me);
+    } catch (err) {
+      // Keep the token so the user can retry or inspect the failure.
+      // The caller can decide how to surface the exact backend error.
+      throw err;
+    }
   }
 
   async function login(email, password) {
     return await authApi.login(email, password);
-  }
-
-  async function verifyOtp(email, otp) {
-    const { access_token } = await authApi.verifyOtp(email, otp);
-    await _hydrateFromToken(access_token);
   }
 
   async function loginWithToken(token) {
@@ -46,7 +47,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, verifyOtp, loginWithToken, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

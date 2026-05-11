@@ -48,7 +48,7 @@ class Settings(BaseSettings):
         if self.azure_openai_endpoint and self.azure_openai_api_key:
             return self.azure_openai_api_key
         return self.openai_api_key
-    database_url: str = "sqlite:///./mcp_hub.db"
+    database_url: str = "sqlite:///./data/mcp_hub.db"
     upload_dir: str = "./uploads"
     cors_origins: str = "http://localhost:5173"
     jwt_secret: str = "change-me-in-production"

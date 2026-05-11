@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { registryApi } from "../lib/api";
-import Badge from "../components/Badge";
 import EmptyState from "../components/EmptyState";
 import { PageSpinner } from "../components/Spinner";
 import { useLanguage } from "../context/LanguageContext";
@@ -18,6 +17,10 @@ export default function Registry() {
     registryApi.list().then(setApis).finally(() => setLoading(false));
   }, []);
 
+  function handleDelete(id) {
+    setApis(prev => prev.filter(a => a.id !== id));
+  }
+
   const filtered = apis.filter(a =>
     !search ||
     a.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -25,17 +28,16 @@ export default function Registry() {
     a.base_url?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const withAuth = filtered.filter(a => a.has_auth);
+  const noAuth   = filtered.filter(a => !a.has_auth);
+
   return (
-    <div className="max-w-6xl mx-auto animate-slide-up space-y-5">
+    <div className="animate-slide-up space-y-5">
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="eyebrow">{t("Registry")}</p>
-          <h1 className="h-page mt-2">{t("API Registry")}</h1>
+          <h1 className="h-page mt-2">{t("MCP Registry")}</h1>
           <p className="lead mt-2">{apis.length} {t("APIs registered")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to="/create/chat" className="btn btn-secondary btn-sm">{t("API Builder")}</Link>
-          <Link to="/create/upload" className="btn btn-primary btn-sm">{t("Doc Upload")}</Link>
         </div>
       </div>
 
@@ -54,25 +56,57 @@ export default function Registry() {
           <EmptyState
             icon="◫"
             title={t("No APIs yet")}
-            description={t("Create your first API using API Builder or Document Upload.")}
-            action={<div className="flex gap-2"><Link to="/create/chat" className="btn btn-secondary btn-sm">{t("API Builder")}</Link><Link to="/create/upload" className="btn btn-primary btn-sm">{t("Doc Upload")}</Link></div>}
+            description={t("Create your first API using MCP Builder or Doc MCP Builder.")}
+            action={<div className="flex gap-2"><Link to="/create/chat" className="btn btn-secondary btn-sm">{t("MCP Builder")}</Link><Link to="/create/upload" className="btn btn-primary btn-sm">{t("Doc MCP Builder")}</Link></div>}
           />
         ) : (
           <EmptyState icon="⊘" title={t("No results")} description={`"${search}"`} />
         )
       ) : (
-        <div className="grid gap-3">
-          {filtered.map(api => (
-            <ApiCard key={api.id} api={api} highlighted={highlight === api.id} t={t} />
-          ))}
+        <div className="space-y-6">
+          {withAuth.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-2)]">Auth Required</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 font-semibold">{withAuth.length}</span>
+              </div>
+              <div className="grid gap-3">
+                {withAuth.map(api => (
+                  <ApiCard key={api.id} api={api} highlighted={highlight === api.id} t={t} onDelete={handleDelete} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {noAuth.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-2)]">No Auth</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] font-semibold">{noAuth.length}</span>
+              </div>
+              <div className="grid gap-3">
+                {noAuth.map(api => (
+                  <ApiCard key={api.id} api={api} highlighted={highlight === api.id} t={t} onDelete={handleDelete} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function ApiCard({ api, highlighted, t }) {
+function ApiCard({ api, highlighted, t, onDelete }) {
   const [expanded, setExpanded] = useState(highlighted);
+
+  async function handleDelete(e) {
+    e.stopPropagation();
+    if (confirm(`Delete "${api.name}"?`)) {
+      await registryApi.delete(api.id);
+      onDelete(api.id);
+    }
+  }
 
   return (
     <div className={`card overflow-hidden ${highlighted ? "ring-1 ring-[var(--ink)]" : ""}`}>
@@ -84,12 +118,14 @@ function ApiCard({ api, highlighted, t }) {
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-sm font-semibold">{api.name}</span>
             {highlighted && <span className="pill pill-ok">{t("Just saved")}</span>}
+            {api.has_auth && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded border border-blue-500/25 bg-blue-500/10 text-blue-400 font-medium">Auth</span>
+            )}
           </div>
           {api.description && <p className="text-xs text-[var(--muted)] line-clamp-1">{api.description}</p>}
           {api.base_url && <p className="text-xs text-[var(--muted)] font-mono mt-1 truncate">{api.base_url}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Badge label={api.visibility} variant={api.visibility} />
           <ChevronIcon expanded={expanded} />
         </div>
       </button>
@@ -108,8 +144,8 @@ function ApiCard({ api, highlighted, t }) {
           )}
           <div className="flex gap-2 pt-1">
             <Link to={`/registry/${api.id}`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>{t("Manage")}</Link>
-            <button onClick={() => navigator.clipboard.writeText(api.id)} className="btn btn-secondary btn-sm">{t("Copy ID")}</button>
-            <button onClick={async () => { if (confirm(`Delete "${api.name}"?`)) { await registryApi.delete(api.id); window.location.reload(); } }} className="btn btn-danger btn-sm">{t("Delete")}</button>
+            <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(api.id); }} className="btn btn-secondary btn-sm">{t("Copy ID")}</button>
+            <button onClick={handleDelete} className="btn btn-danger btn-sm">{t("Delete")}</button>
           </div>
         </div>
       )}

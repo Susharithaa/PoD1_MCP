@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: HeartRails Japan Local Info API
+  version: 1.0.0
+  description: >-
+    Free, public REST API (no authentication required) for Japan local information —
+    regional areas, train/subway lines by area or prefecture, nearest stations by GPS,
+    and station details.
+
+    All operations use the same endpoint `GET /api/json` and are selected by the
+    required `method` query parameter. Parameter requirements by method:
+
+    | method          | Required extra params         | Use case                                  |
+    |-----------------|-------------------------------|-------------------------------------------|
+    | getAreas        | none                          | List all major regions (Kanto, Kansai…)   |
+    | getLines        | area OR prefecture            | List lines in a region or prefecture      |
+    | getStations     | line                          | List all stations on a given line         |
+    | getNearestStations | x (lon), y (lat)           | Nearest stations to a GPS coordinate      |
+
+    **Tips for ChatGPT usage:**
+    - Call getAreas first to discover valid area names, then getLines with that area.
+    - Use prefecture names in Japanese (e.g. 東京都, 大阪府, 神奈川県, 愛知県, 福岡県).
+    - Coordinates use WGS84 decimal degrees (e.g. x=139.7016, y=35.6580 for central Tokyo).
+
+    Source: https://express.heartrails.com/api.html
+
+servers:
+  - url: http://express.heartrails.com
+    description: HeartRails Express public API (no auth required)
+
+paths:
+  /api/json:
+    get:
+      operationId: japanLocalInfo
+      summary: Japan local info — areas, lines, stations, nearest station lookup
+      description: >-
+        Multi-purpose endpoint for Japan local information.
+        Select the operation with the `method` parameter:
+
+        - **getAreas** — Returns all 8 major regional area names in Japanese
+          (北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄). No extra params needed.
+
+        - **getLines** — Returns train/subway lines. Supply either:
+            - `area` (regional name from getAreas) to get lines across a broad region, OR
+            - `prefecture` (prefecture name in Japanese) to get lines in one prefecture.
+
+        - **getStations** — Returns all stations on a named line.
+          Supply `line` (line name from getLines).
+
+        - **getNearestStations** — Returns the 10 nearest stations to a GPS coordinate.
+          Supply `x` (longitude) and `y` (latitude) in WGS84 decimal degrees.
+      tags: [Japan Local Info]
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getAreas, getLines, getStations, getNearestStations]
+          description: >-
+            Operation selector:
+            getAreas (no extra params),
+            getLines (needs area or prefecture),
+            getStations (needs line),
+            getNearestStations (needs x and y).
+          example: getAreas
+
+        - name: area
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄]
+          description: >-
+            Regional area name in Japanese. Used with method=getLines to list all
+            lines in a broad region. One of: 北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄.
+          example: 関東
+
+        - name: prefecture
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Prefecture name in Japanese. Used with method=getLines to list lines in
+            one prefecture. Examples: 東京都, 大阪府, 神奈川県, 愛知県, 福岡県, 北海道.
+          example: 東京都
+
+        - name: line
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Train or subway line name in Japanese. Used with method=getStations
+            to list all stations on that line. Obtain line names from a getLines call.
+          example: JR山手線
+
+        - name: x
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Longitude in WGS84 decimal degrees. Used with method=getNearestStations.
+            Example: 139.7016 (central Tokyo).
+          example: "139.7016"
+
+        - name: y
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Latitude in WGS84 decimal degrees. Used with method=getNearestStations.
+            Example: 35.6580 (central Tokyo).
+          example: "35.6580"
+
+      responses:
+        "200":
+          description: >-
+            JSON response. The shape of `response` depends on the method called:
+            - getAreas → `{ response: { area: [string] } }`
+            - getLines → `{ response: { line: [string] } }`
+            - getStations → `{ response: { station: [StationObject] } }`
+            - getNearestStations → `{ response: { station: [StationObject] } }`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalInfoResponse"
+
+components:
+  schemas:
+    LocalInfoResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          description: Top-level response wrapper.
+          properties:
+            area:
+              type: array
+              description: "Present for method=getAreas. Major region names in Japanese."
+              items:
+                type: string
+              example: [北海道, 東北, 関東, 中部, 近畿, 中国, 四国, 九州・沖縄]
+            line:
+              type: array
+              description: "Present for method=getLines. Train/subway line names."
+              items:
+                type: string
+              example: [JR山手線, 東京メトロ銀座線, 都営浅草線]
+            station:
+              type: array
+              description: "Present for method=getStations or getNearestStations."
+              items:
+                $ref: "#/components/schemas/Station"
+
+    Station:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Station name in Japanese. e.g. 東京
+        prefecture:
+          type: string
+          description: Prefecture the station is located in. e.g. 東京都
+        line:
+          type: string
+          description: Line name the station belongs to. e.g. JR山手線
+        x:
+          type: string
+          description: Station longitude (WGS84). e.g. 139.7671
+        y:
+          type: string
+          description: Station latitude (WGS84). e.g. 35.6814
+        postal:
+          type: string
+          description: 7-digit postal code of the station area. e.g. 1000005
+        distance:
+          type: string
+          description: "Walking distance from query coordinates (getNearestStations only). e.g. 350m"
+        prev:
+          type: string
+          description: Previous station on the line.
+        next:
+          type: string
+          description: Next station on the line.

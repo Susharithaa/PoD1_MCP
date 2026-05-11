@@ -61,7 +61,7 @@ function initForm() {
   };
 }
 
-export default function ChatBuilder() {
+export default function ChatBuilder({ embedded = false }) {
   const { t } = useLanguage();
   const [form,     setForm]     = useState(initForm);
   const [loading,  setLoading]  = useState(false);
@@ -146,30 +146,16 @@ export default function ChatBuilder() {
   }
 
   return (
-    <div className="max-w-3xl animate-slide-up">
-      <div className="mb-7">
-        <h1 className="page-title">{t("API Builder")}</h1>
-        <p className="page-subtitle mt-1">
-          {t("Define your API endpoints. MCP Hub will register them as callable tools.")}
-        </p>
-      </div>
-
-        <div className="card p-4 mb-4">
-          <p className="eyebrow">Sample API</p>
-          <p className="text-sm text-[var(--muted)] mt-2">
-            Run the demo FastAPI app in <span className="font-mono">testing/sample_fastapi_app.py</span> with
-            <span className="font-mono"> uvicorn testing.sample_fastapi_app:app --reload --port 9001</span>,
-            then use <span className="font-mono">http://localhost:9001</span> as the Base URL and add the sample endpoints.
-            The demo now also includes <span className="font-mono">POST /chat</span> for Azure OpenAI-backed chat testing.
-          </p>
-          <p className="text-sm text-[var(--muted)] mt-2">
-            If you want the chat panel to use Azure OpenAI, set
-            <span className="font-mono"> AZURE_OPENAI_API_KEY</span>,
-            <span className="font-mono"> AZURE_OPENAI_ENDPOINT</span>,
-            <span className="font-mono"> AZURE_OPENAI_API_VERSION</span>, and
-            <span className="font-mono"> AZURE_OPENAI_DEPLOYMENT</span> in <span className="font-mono">backend/.env</span>.
+    <div className="animate-slide-up">
+      {!embedded && (
+        <div className="mb-7">
+          <h1 className="page-title">{t("Manual MCP Onboarding")}</h1>
+          <p className="page-subtitle mt-1">
+            {t("Define your API endpoints manually — method, path, parameters, and auth — to register them as MCP tools.")}
           </p>
         </div>
+      )}
+
 
       <form onSubmit={handleSubmit} className="space-y-4">
 

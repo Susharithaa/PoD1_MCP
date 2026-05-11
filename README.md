@@ -125,7 +125,7 @@ GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 ```
 
-> **Running without OpenAI / SMTP?** Set `MOCK_LLM=true` and configure SMTP so OTP emails are delivered. See [Common Issues](#common-issues) for the dev workaround if you cannot configure SMTP.
+> **Running without OpenAI / SMTP?** Set `MOCK_LLM=false` and configure SMTP so OTP emails are delivered. See [Common Issues](#common-issues) for the dev workaround if you cannot configure SMTP.
 
 ### 5. SMTP (Gmail) Setup
 
@@ -256,7 +256,7 @@ python -m pytest tests/test_hitl_base_url.py -v
 python -m pytest tests/test_patch_draft.py -v
 ```
 
-Tests use an in-memory SQLite database and `MOCK_LLM=true` — no real API keys or database needed.
+Tests use an in-memory SQLite database and `MOCK_LLM=false` — no real API keys or database needed.
 If `slowapi` is missing in a lean local environment, the backend still boots with a no-op fallback limiter.
 
 ---
@@ -265,7 +265,7 @@ If `slowapi` is missing in a lean local environment, the backend still boots wit
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `OPENAI_API_KEY` | `mock` | Yes (for AI) | OpenAI key. Set to `mock` with `MOCK_LLM=true` for dev |
+| `OPENAI_API_KEY` | `mock` | Yes (for AI) | OpenAI key. Set to `mock` with `MOCK_LLM=false` for dev |
 | `MOCK_LLM` | `false` | No | Skip OpenAI calls — useful for demos and testing |
 | `DATABASE_URL` | `sqlite:///./mcp_hub.db` | No | SQLite (default) or PostgreSQL URL |
 | `UPLOAD_DIR` | `./uploads` | No | Where uploaded docs are saved |

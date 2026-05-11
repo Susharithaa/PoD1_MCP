@@ -8,7 +8,7 @@ export default function Security() {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("Codex MCP token");
+  const [name, setName] = useState("MCP token");
   const [createdToken, setCreatedToken] = useState(null);
   const [error, setError] = useState("");
 
@@ -28,9 +28,9 @@ export default function Security() {
     setCreating(true);
     setError("");
     try {
-      const row = await securityApi.createToken(name.trim() || "Codex MCP token", [DEFAULT_SCOPE]);
+      const row = await securityApi.createToken(name.trim() || "MCP token", [DEFAULT_SCOPE]);
       setCreatedToken(row.token);
-      setName("Codex MCP token");
+      setName("MCP token");
       await refresh();
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to create API token.");
@@ -70,12 +70,12 @@ export default function Security() {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-6xl mx-auto animate-slide-up space-y-6">
+    <div className="animate-slide-up space-y-6">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <p className="eyebrow">Security</p>
           <h1 className="h-page mt-2">API Tokens</h1>
-          <p className="lead mt-2">Create bearer tokens for Codex and MCP clients.</p>
+          <p className="lead mt-2">Create bearer tokens for MCP clients and external integrations.</p>
         </div>
         <span className="pill">Required scope: {DEFAULT_SCOPE}</span>
       </div>
@@ -116,7 +116,7 @@ export default function Security() {
                 className="field-input"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Codex MCP token"
+                placeholder="MCP token"
               />
             </label>
 

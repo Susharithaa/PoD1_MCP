@@ -4,14 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { authApi } from "../lib/api";
 
 export default function Login() {
-  const { login, verifyOtp } = useAuth();
+  const { login, loginWithToken } = useAuth();
   const navigate = useNavigate();
 
-  const [step,     setStep]     = useState("credentials"); // "credentials" | "otp"
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [otp,      setOtp]      = useState("");
-  const [otpHint,  setOtpHint]  = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
@@ -21,26 +18,16 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await login(email, password);
-      if (res.status === "otp_required") {
-        setOtpHint(res.message);
-        setStep("otp");
+      if (!res?.access_token) {
+        setError("Unexpected login response from server.");
+        return;
       }
-    } catch (err) {
-      setError(err?.response?.data?.detail || "Invalid email or password");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleOtp(e) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await verifyOtp(email, otp.trim());
+      await loginWithToken(res.access_token);
       navigate("/");
     } catch (err) {
-      setError(err?.response?.data?.detail || "Invalid or expired code");
+      const detail = err?.response?.data?.detail;
+      const status = err?.response?.status;
+      setError(detail || (status ? `Login failed (${status}).` : "Invalid email or password"));
     } finally {
       setLoading(false);
     }
@@ -63,139 +50,86 @@ export default function Login() {
         </div>
 
         <div className="card p-6 space-y-5">
-          {step === "credentials" ? (
-            <>
-              <div>
-                <h1 className="text-lg font-semibold text-zinc-100">Sign in</h1>
-                <p className="text-sm text-zinc-500 mt-0.5">Welcome back to MCP Hub</p>
-              </div>
+          <div>
+            <h1 className="text-lg font-semibold text-zinc-100">Sign in</h1>
+            <p className="text-sm text-zinc-500 mt-0.5">Welcome back to MCP Hub</p>
+          </div>
 
-              {/* Social sign-in */}
-              <div className="space-y-2">
-                <a
-                  href={authApi.googleLoginUrl()}
-                  className="flex items-center justify-center gap-2.5 w-full px-4 py-2.5 rounded-lg
-                             border border-zinc-700 bg-zinc-900 text-zinc-300 text-sm
-                             hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
-                >
-                  <GoogleIcon />
-                  Continue with Google
-                </a>
-                <a
-                  href={authApi.githubLoginUrl()}
-                  className="flex items-center justify-center gap-2.5 w-full px-4 py-2.5 rounded-lg
-                             border border-zinc-700 bg-zinc-900 text-zinc-300 text-sm
-                             hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
-                >
-                  <GitHubIcon />
-                  Continue with GitHub
-                </a>
-              </div>
+          {/* Social sign-in */}
+          <div className="space-y-2">
+            <a
+              href={authApi.googleLoginUrl()}
+              className="flex items-center justify-center gap-2.5 w-full px-4 py-2.5 rounded-lg
+                         border border-zinc-700 bg-zinc-900 text-zinc-300 text-sm
+                         hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </a>
+            <a
+              href={authApi.githubLoginUrl()}
+              className="flex items-center justify-center gap-2.5 w-full px-4 py-2.5 rounded-lg
+                         border border-zinc-700 bg-zinc-900 text-zinc-300 text-sm
+                         hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+            >
+              <GitHubIcon />
+              Continue with GitHub
+            </a>
+          </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-zinc-800" />
-                <span className="text-xs text-zinc-600">or</span>
-                <div className="flex-1 h-px bg-zinc-800" />
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-zinc-800" />
+            <span className="text-xs text-zinc-600">or</span>
+            <div className="flex-1 h-px bg-zinc-800" />
+          </div>
 
-              <form onSubmit={handleCredentials} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-zinc-400">Email</label>
-                  <input
-                    type="email"
-                    className="input w-full"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
+          <form onSubmit={handleCredentials} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-400">Email</label>
+              <input
+                type="email"
+                className="input w-full"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-zinc-400">Password</label>
-                  <input
-                    type="password"
-                    className="input w-full"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-400">Password</label>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+            </div>
 
-                {error && (
-                  <p className="text-xs text-red-400 bg-red-950/40 border border-red-800/40 rounded-lg px-3 py-2">
-                    {error}
-                  </p>
-                )}
+            {error && (
+              <p className="text-xs text-red-400 bg-red-950/40 border border-red-800/40 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Checking…" : "Continue"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <div>
-                <h1 className="text-lg font-semibold text-zinc-100">Check your email</h1>
-                <p className="text-sm text-zinc-500 mt-0.5">{otpHint}</p>
-              </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? "Signing in…" : "Continue"}
+            </button>
+          </form>
 
-              <form onSubmit={handleOtp} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-zinc-400">6-digit code</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    className="input w-full text-center text-xl tracking-[0.35em] font-mono"
-                    placeholder="000000"
-                    value={otp}
-                    onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-xs text-red-400 bg-red-950/40 border border-red-800/40 rounded-lg px-3 py-2">
-                    {error}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || otp.length !== 6}
-                  className="btn-primary w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Verifying…" : "Sign in"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setStep("credentials"); setOtp(""); setError(""); }}
-                  className="w-full text-center text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1"
-                >
-                  ← Back
-                </button>
-              </form>
-            </>
-          )}
-
-          {step === "credentials" && (
-            <p className="text-center text-sm text-zinc-500">
-              No account?{" "}
-              <Link to="/register" className="text-blue-400 hover:text-blue-300 transition-colors">
-                Create one
-              </Link>
-            </p>
-          )}
+          <p className="text-center text-sm text-zinc-500">
+            No account?{" "}
+            <Link to="/register" className="text-blue-400 hover:text-blue-300 transition-colors">
+              Create one
+            </Link>
+          </p>
         </div>
       </div>
     </div>

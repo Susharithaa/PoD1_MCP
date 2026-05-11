@@ -17,7 +17,8 @@ import Expenses      from "./pages/Expenses";
 import Security      from "./pages/Security";
 import Login         from "./pages/Login";
 import Register      from "./pages/Register";
-import AuthCallback  from "./pages/AuthCallback";
+import AuthCallback   from "./pages/AuthCallback";
+import McpOnboarding from "./pages/McpOnboarding";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
     element: <ProtectedRoute><App /></ProtectedRoute>,
     children: [
       { index: true,                 element: <Home /> },
+      { path: "onboarding",           element: <McpOnboarding /> },
       { path: "create/chat",         element: <ChatBuilder /> },
       { path: "create/upload",       element: <DocUpload /> },
       { path: "validate/:sessionId", element: <HITLValidator /> },

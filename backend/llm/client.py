@@ -86,7 +86,7 @@ async def chat_json(system: str, user: str, *, max_tokens: int = 2048) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Mock responses for local dev (MOCK_LLM=true)
+# Mock responses for local dev (MOCK_LLM=false)
 # ---------------------------------------------------------------------------
 
 def _mock_response(system: str, prompt: str) -> str:

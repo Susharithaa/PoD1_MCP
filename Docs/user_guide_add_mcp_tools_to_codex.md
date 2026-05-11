@@ -14,7 +14,7 @@ For no-key local testing, set the backend to mock LLM mode:
 
 ```env
 OPENAI_API_KEY=mock
-MOCK_LLM=true
+MOCK_LLM=false
 ```
 
 ## 1. Start MCP Hub

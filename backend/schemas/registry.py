@@ -23,6 +23,7 @@ class ApiUpdateRequest(BaseModel):
 
 class ApiAuthUpdateRequest(BaseModel):
     auth_type: str
+    auth_credentials: Any = None
 
 
 class EndpointResponse(BaseModel):
@@ -32,6 +33,7 @@ class EndpointResponse(BaseModel):
     path: str
     method: str
     auth_type: str | None
+    auth_credentials: Any = None
     input_schema: Any
     output_schema: Any
     headers: Any

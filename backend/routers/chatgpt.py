@@ -385,7 +385,10 @@ async def chat_with_tools(
         kwargs: dict = {"model": model_name, "messages": messages}
         if all_tools:
             kwargs["tools"] = all_tools
-            kwargs["tool_choice"] = "auto"
+            # "required" on the first turn forces the AI to call a tool instead of
+            # answering from training data. After tools have been called (records is
+            # non-empty), switch to "auto" so the AI can write the summary freely.
+            kwargs["tool_choice"] = "auto" if records else "required"
 
         try:
             resp = await client.chat.completions.create(**kwargs)

@@ -1,0 +1,20 @@
+services:
+  frontend:
+    image: node:20-alpine
+    container_name: mcp-hub-frontend
+    working_dir: /app/frontend
+    command: >
+      sh -c "npm install &&
+             VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://10.126.104.12:8000} npm run build &&
+             npm run preview -- --host 0.0.0.0 --port 8001"
+    ports:
+      - "8001:8001"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://10.126.104.12:8000}
+    volumes:
+      - ..:/app
+      - frontend_node_modules:/app/frontend/node_modules
+    restart: unless-stopped
+
+volumes:
+  frontend_node_modules:

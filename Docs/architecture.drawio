@@ -419,7 +419,7 @@
           <mxGeometry x="245" y="480" width="180" height="92" as="geometry"/>
         </mxCell>
 
-        <mxCell id="le-env" value="backend/.env&#xa;APP_ENV=dev&#xa;OPENAI_API_KEY=mock&#xa;MOCK_LLM=true/false&#xa;JWT_SECRET, ENCRYPTION_KEY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=12;fontStyle=1;fontColor=#78350f;arcSize=8;" vertex="1" parent="le-local-data-zone">
+        <mxCell id="le-env" value="backend/.env&#xa;APP_ENV=dev&#xa;OPENAI_API_KEY=mock&#xa;MOCK_LLM=false&#xa;JWT_SECRET, ENCRYPTION_KEY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=12;fontStyle=1;fontColor=#78350f;arcSize=8;" vertex="1" parent="le-local-data-zone">
           <mxGeometry x="35" y="55" width="260" height="108" as="geometry"/>
         </mxCell>
         <mxCell id="le-db" value="mcp_hub.db&#xa;Local SQLite DB&#xa;Users, sessions, registry, endpoints, audit" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=12;fontStyle=1;fontColor=#7c2d12;" vertex="1" parent="le-local-data-zone">

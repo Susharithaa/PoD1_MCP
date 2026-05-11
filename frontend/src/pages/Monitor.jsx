@@ -44,7 +44,7 @@ export default function Monitor() {
         monitorApi.toolCalls(30).catch(() => []),
       ]);
       if (ov) setOverview(ov);
-      setActive(ac);
+      setActive(ac.filter(s => s.state !== "DISCARDED"));
       setSessions(se.filter(s => s.state === "SAVED"));
       setToolCalls(tc);
       setLastRefresh(new Date());
@@ -68,7 +68,7 @@ export default function Monitor() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto animate-slide-up space-y-6">
+    <div className="animate-slide-up space-y-6">
 
       {/* Header */}
       <div className="flex items-end justify-between gap-4">

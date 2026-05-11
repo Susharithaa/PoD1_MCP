@@ -1,0 +1,624 @@
+openapi: 3.0.3
+info:
+  title: Company Asset Management API
+  version: 1.0.0
+  description: >
+    REST API for managing employees, departments, assets, and inventory
+    for a company. No authentication is required. Base URL: http://localhost:8000
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+components:
+  schemas:
+    Employee:
+      type: object
+      required:
+        - name
+        - department
+        - email
+      properties:
+        employee_id:
+          type: integer
+          description: Auto-assigned unique numeric identifier.
+          example: 1
+        name:
+          type: string
+          description: Full name of the employee.
+          example: "Alice Johnson"
+        department:
+          type: string
+          description: Department the employee belongs to.
+          example: "Engineering"
+        email:
+          type: string
+          format: email
+          description: Employee's work email address.
+          example: "alice@company.com"
+
+    EmployeeInput:
+      type: object
+      required:
+        - name
+        - department
+        - email
+      properties:
+        name:
+          type: string
+          example: "Alice Johnson"
+        department:
+          type: string
+          example: "Engineering"
+        email:
+          type: string
+          format: email
+          example: "alice@company.com"
+
+    EmployeeUpdate:
+      type: object
+      description: All fields optional — only provided fields will be updated.
+      properties:
+        name:
+          type: string
+          example: "Alice Johnson"
+        department:
+          type: string
+          example: "HR"
+        email:
+          type: string
+          format: email
+          example: "alice.hr@company.com"
+
+    Asset:
+      type: object
+      properties:
+        asset_id:
+          type: integer
+          example: 101
+        asset_name:
+          type: string
+          example: "MacBook Pro 14\""
+        asset_type:
+          type: string
+          example: "Laptop"
+        status:
+          type: string
+          enum: [available, assigned]
+          example: "available"
+        assigned_to:
+          type: integer
+          nullable: true
+          description: employee_id of the assigned employee, or null if unassigned.
+          example: null
+
+    InventoryItem:
+      type: object
+      properties:
+        inventory_id:
+          type: integer
+          example: 1
+        item_name:
+          type: string
+          example: "USB-C Hub"
+        quantity:
+          type: integer
+          example: 50
+        supplier:
+          type: string
+          nullable: true
+          example: "Anker"
+
+    DepartmentHeadcount:
+      type: object
+      properties:
+        department:
+          type: string
+          example: "Engineering"
+        headcount:
+          type: integer
+          example: 24
+
+    ErrorDetail:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Employee not found"
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      operationId: healthCheck
+      description: Returns the health status of the API service. No authentication required.
+      tags:
+        - System
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  service:
+                    type: string
+                    example: "company_asset_management_api"
+
+  /employees:
+    get:
+      summary: List All Employees
+      operationId: listEmployees
+      description: >
+        Returns all employee records. Optionally filter by department, location,
+        or designation using query parameters.
+      tags:
+        - Employees
+      parameters:
+        - name: department
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Filter by department name (case-insensitive). Example: Engineering, HR, Finance."
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Filter by office location (case-insensitive). Example: Tokyo, Osaka."
+        - name: designation
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Filter by job title (case-insensitive). Example: Manager, Engineer."
+      responses:
+        "200":
+          description: List of employees.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+              example:
+                - employee_id: 1
+                  name: "Alice Johnson"
+                  department: "Engineering"
+                  email: "alice@company.com"
+                - employee_id: 2
+                  name: "Bob Smith"
+                  department: "HR"
+                  email: "bob@company.com"
+
+    post:
+      summary: Create Employee
+      operationId: createEmployee
+      description: Create a new employee record. Returns the created employee with its assigned ID.
+      tags:
+        - Employees
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeInput"
+            example:
+              name: "Carol White"
+              department: "Finance"
+              email: "carol@company.com"
+      responses:
+        "201":
+          description: Employee created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          description: Invalid input or duplicate email.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /employees/{employee_id}:
+    get:
+      summary: Get Employee by ID
+      operationId: getEmployee
+      description: Fetch a single employee record by their numeric employee ID.
+      tags:
+        - Employees
+      parameters:
+        - name: employee_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique numeric ID of the employee.
+          example: 1
+      responses:
+        "200":
+          description: Employee record found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Employee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+    put:
+      summary: Update Employee
+      operationId: updateEmployee
+      description: >
+        Update one or more fields of an existing employee. Only fields included
+        in the request body will be modified; omitted fields remain unchanged.
+      tags:
+        - Employees
+      parameters:
+        - name: employee_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique numeric ID of the employee to update.
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeUpdate"
+            example:
+              department: "HR"
+              email: "alice.hr@company.com"
+      responses:
+        "200":
+          description: Employee updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Employee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+    delete:
+      summary: Delete Employee
+      operationId: deleteEmployee
+      description: Permanently delete an employee record by ID.
+      tags:
+        - Employees
+      parameters:
+        - name: employee_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique numeric ID of the employee to delete.
+          example: 1
+      responses:
+        "200":
+          description: Employee deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Employee deleted"
+        "404":
+          description: Employee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /employees/department/{department}:
+    get:
+      summary: Get Employees by Department
+      operationId: getEmployeesByDepartment
+      description: Returns all employees belonging to the specified department.
+      tags:
+        - Employees
+      parameters:
+        - name: department
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Department name (case-insensitive). Example: Engineering, HR, Finance."
+          example: "Engineering"
+      responses:
+        "200":
+          description: List of employees in the department.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+        "404":
+          description: Department not found or has no employees.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /employees/search/{keyword}:
+    get:
+      summary: Search Employees by Keyword
+      operationId: searchEmployees
+      description: >
+        Full-text search across employee name, department, and email using a keyword.
+        Returns all employees whose records contain the keyword (case-insensitive).
+      tags:
+        - Employees
+      parameters:
+        - name: keyword
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Search keyword to match against employee name, department, or email.
+          example: "alice"
+      responses:
+        "200":
+          description: Matching employees.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+  /employees/{employee_id}/assets:
+    get:
+      summary: Get Assets Assigned to Employee
+      operationId: getEmployeeAssets
+      description: Returns all assets currently assigned to the specified employee.
+      tags:
+        - Assets
+      parameters:
+        - name: employee_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique numeric ID of the employee.
+          example: 1
+      responses:
+        "200":
+          description: List of assets assigned to this employee.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Asset"
+        "404":
+          description: Employee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /departments/headcount:
+    get:
+      summary: Department Headcount
+      operationId: getDepartmentHeadcount
+      description: Returns the number of employees in each department.
+      tags:
+        - Departments
+      responses:
+        "200":
+          description: Headcount per department.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentHeadcount"
+              example:
+                - department: "Engineering"
+                  headcount: 24
+                - department: "HR"
+                  headcount: 8
+                - department: "Finance"
+                  headcount: 12
+
+  /assets/available:
+    get:
+      summary: List Available Assets
+      operationId: listAvailableAssets
+      description: Returns all assets that are currently unassigned and available to be assigned to an employee.
+      tags:
+        - Assets
+      responses:
+        "200":
+          description: List of available assets.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Asset"
+              example:
+                - asset_id: 101
+                  asset_name: "MacBook Pro 14\""
+                  asset_type: "Laptop"
+                  status: "available"
+                  assigned_to: null
+
+  /assets/assign:
+    post:
+      summary: Assign Asset to Employee
+      operationId: assignAsset
+      description: >
+        Assign a specific asset to an employee. Both the asset and the employee
+        must exist. The asset must currently be in an available (unassigned) state.
+      tags:
+        - Assets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - asset_id
+                - employee_id
+              properties:
+                asset_id:
+                  type: integer
+                  description: ID of the asset to assign.
+                  example: 101
+                employee_id:
+                  type: integer
+                  description: ID of the employee to receive the asset.
+                  example: 1
+            example:
+              asset_id: 101
+              employee_id: 1
+      responses:
+        "200":
+          description: Asset assigned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "400":
+          description: Asset is already assigned or invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+        "404":
+          description: Asset or employee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /assets/unassign/{asset_id}:
+    post:
+      summary: Unassign Asset
+      operationId: unassignAsset
+      description: >
+        Remove the assignment of an asset, returning it to available status.
+        The asset must currently be assigned to an employee.
+      tags:
+        - Assets
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the asset to unassign.
+          example: 101
+      responses:
+        "200":
+          description: Asset unassigned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "400":
+          description: Asset is not currently assigned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+        "404":
+          description: Asset not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /inventory:
+    get:
+      summary: List Inventory
+      operationId: listInventory
+      description: Returns all inventory items with their quantities and supplier information.
+      tags:
+        - Inventory
+      responses:
+        "200":
+          description: Full inventory list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+              example:
+                - inventory_id: 1
+                  item_name: "USB-C Hub"
+                  quantity: 50
+                  supplier: "Anker"
+                - inventory_id: 2
+                  item_name: "HDMI Cable"
+                  quantity: 100
+                  supplier: null
+
+    post:
+      summary: Add Inventory Item
+      operationId: addInventoryItem
+      description: Add a new item to inventory. Supplier is optional.
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - item_name
+                - quantity
+              properties:
+                item_name:
+                  type: string
+                  description: Name of the inventory item.
+                  example: "Mechanical Keyboard"
+                quantity:
+                  type: integer
+                  minimum: 0
+                  description: Number of units in stock.
+                  example: 25
+                supplier:
+                  type: string
+                  nullable: true
+                  description: Supplier or vendor name (optional).
+                  example: "Logitech"
+            example:
+              item_name: "Mechanical Keyboard"
+              quantity: 25
+              supplier: "Logitech"
+      responses:
+        "201":
+          description: Inventory item created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"

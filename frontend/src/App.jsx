@@ -10,28 +10,20 @@ import UploadToast from "./components/UploadToast";
 const NAV_SECTIONS = [
   {
     items: [
-      { to: "/",         labelKey: "Overview",     icon: GridIcon },
-      { to: "/registry", labelKey: "API Registry", icon: LayersIcon },
+      { to: "/",         labelKey: "Overview",      icon: GridIcon },
+      { to: "/registry", labelKey: "MCP Registry",  icon: LayersIcon },
     ],
   },
   {
-    headingKey: "Create",
     items: [
-      { to: "/create/chat",   labelKey: "API Builder", icon: ChatIcon },
-      { to: "/create/upload", labelKey: "Doc Upload",   icon: UploadIcon },
-    ],
-  },
-  {
-    headingKey: "Integrations",
-    items: [
-      { to: "/chatgpt", labelKey: "ChatGPT Tools", icon: SparkleIcon },
-      { to: "/expenses", labelKey: "Expenses", icon: ReceiptIcon },
+      { to: "/onboarding", labelKey: "MCP Onboarding", icon: PlusCircleIcon },
+      { to: "/chatgpt",    labelKey: "MCP Validation",  icon: SparkleIcon },
     ],
   },
   {
     headingKey: "System",
     items: [
-      { to: "/monitor", labelKey: "Monitor", icon: MonitorIcon },
+      { to: "/monitor", labelKey: "Monitor",  icon: MonitorIcon },
       { to: "/security", labelKey: "Security", icon: KeyIcon },
     ],
   },
@@ -64,7 +56,7 @@ function AppShell() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.88),rgba(255,255,255,0.74)_36%,rgba(246,246,242,0.98)_72%)] text-[var(--ink)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--ink)]">
       <Sidebar collapsed={collapsed} onToggle={toggleCollapse} />
       <main className="flex-1 overflow-y-auto min-w-0">
         <Topbar />
@@ -84,23 +76,16 @@ function Topbar() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-20 h-14 border-b border-[var(--line)] bg-[rgba(250,250,248,0.82)] backdrop-blur-md">
-      <div className="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-xl">
-          <input
-            className="input !bg-[var(--surface)] !border-transparent !pl-10 !pr-14"
-            placeholder={lang === "ja" ? "API・セッション・ツールを検索" : "Search APIs, sessions, tools"}
-          />
-          <SearchIcon />
-          <span className="kbd absolute right-3 top-1/2 -translate-y-1/2">⌘K</span>
-        </div>
+    <header className="sticky top-0 z-20 h-14 border-b border-[var(--line)] bg-[var(--surface)] backdrop-blur-md" style={{ background: "color-mix(in srgb, var(--surface) 85%, transparent)" }}>
+      <div className="h-full px-4 lg:px-8 flex items-center justify-end gap-4">
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={toggle} className="btn-ghost btn-sm focus-ring" title={lang === "ja" ? "Switch to English" : "日本語に切り替え"}>
             <GlobeIcon />
             <span className="mono">{lang === "ja" ? "JA" : "EN"}</span>
           </button>
-          <button onClick={toggleTheme} className="btn-ghost btn-sm focus-ring" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+          <button onClick={toggleTheme} className="btn-ghost btn-sm focus-ring gap-1.5" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {theme === "dark" ? <MoonIcon /> : <SunIcon />}
+            <span className="text-[10px] font-mono hidden sm:inline">{theme === "dark" ? "Dark" : "Light"}</span>
           </button>
           <span className="pill pill-ok hidden sm:inline-flex">
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--ok)" }} />
@@ -112,11 +97,11 @@ function Topbar() {
   );
 }
 
-function SearchIcon() {
+function PlusCircleIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-2)] pointer-events-none">
-      <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M7.5 4.5v6M4.5 7.5h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -153,11 +138,11 @@ function Sidebar({ collapsed, onToggle }) {
     `relative flex items-center rounded-lg transition-colors
      ${collapsed ? "justify-center px-0 py-2.5 w-full" : "gap-2.5 px-2.5 py-2"}
      ${isActive
-       ? "bg-blue-600/15 text-blue-300 font-medium border border-blue-500/20"
-       : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/70"}`;
+       ? "bg-blue-600/15 text-blue-400 font-medium border border-blue-500/20"
+       : "text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)]"}`;
 
   const iconBtnClass =
-    "flex items-center justify-center w-full py-2.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors";
+    "flex items-center justify-center w-full py-2.5 rounded-lg text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors";
 
   return (
     <aside
@@ -207,12 +192,12 @@ function Sidebar({ collapsed, onToggle }) {
                     {!collapsed && (
                       <>
                         <span className="flex-1 text-sm">{t(labelKey)}</span>
-                        {to === "/create/upload" && hasActiveBackground && (
+                        {to === "/onboarding" && hasActiveBackground && (
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" title="Upload in progress" />
                         )}
                       </>
                     )}
-                    {collapsed && to === "/create/upload" && hasActiveBackground && (
+                    {collapsed && to === "/onboarding" && hasActiveBackground && (
                       <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                     )}
                   </NavLink>
@@ -271,8 +256,8 @@ function Sidebar({ collapsed, onToggle }) {
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors mb-1
                    ${isActive
-                     ? "bg-amber-500/15 text-amber-300 font-medium border border-amber-500/20"
-                     : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/70"}`
+                     ? "bg-amber-500/15 text-amber-400 font-medium border border-amber-500/20"
+                     : "text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)]"}`
                 }
               >
                 <ShieldIcon />
@@ -288,10 +273,10 @@ function Sidebar({ collapsed, onToggle }) {
                   <div className="w-6 h-6 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
                     <span className="text-[10px] font-semibold text-blue-400 uppercase">{user.email[0]}</span>
                   </div>
-                  <span className="text-xs text-zinc-400 truncate">{user.email}</span>
+                  <span className="text-xs text-[var(--muted)] truncate">{user.email}</span>
                 </div>
                 <button onClick={handleLogout} title="Sign out"
-                  className="ml-1 flex-shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors">
+                  className="ml-1 flex-shrink-0 text-[var(--muted)] hover:text-[var(--ink)] transition-colors">
                   <LogoutIcon />
                 </button>
               </div>
@@ -299,8 +284,8 @@ function Sidebar({ collapsed, onToggle }) {
             <LanguageToggle />
             <ThemeToggle />
             <a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer"
-               className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-zinc-600
-                          hover:text-zinc-400 hover:bg-zinc-800/60 transition-colors">
+               className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-[var(--muted)]
+                          hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors">
               <ApiIcon />
               {t("API Reference")}
             </a>
@@ -316,7 +301,7 @@ function CollapsedLangToggle() {
   const { lang, toggle } = useLanguage();
   return (
     <button onClick={toggle} title={lang === "ja" ? "Switch to English" : "日本語に切り替え"}
-      className="flex items-center justify-center w-full py-2.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors">
+      className="flex items-center justify-center w-full py-2.5 rounded-lg text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors">
       <GlobeIcon />
     </button>
   );
@@ -325,7 +310,7 @@ function CollapsedThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   return (
     <button onClick={toggleTheme} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex items-center justify-center w-full py-2.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors">
+      className="flex items-center justify-center w-full py-2.5 rounded-lg text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors">
       {theme === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>
   );
@@ -337,16 +322,16 @@ function LanguageToggle() {
   return (
     <button onClick={toggle}
       className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg
-                 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
+                 text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors"
       title={isJa ? "Switch to English" : "日本語に切り替え"}>
       <span className="flex items-center gap-2 text-xs">
         <GlobeIcon />
         {isJa ? "日本語" : "English"}
       </span>
       <span className="flex items-center gap-0.5 text-[10px] font-mono">
-        <span className={`px-1.5 py-0.5 rounded transition-colors ${!isJa ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-zinc-700"}`}>EN</span>
-        <span className="text-zinc-700">·</span>
-        <span className={`px-1.5 py-0.5 rounded transition-colors ${isJa  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-zinc-700"}`}>JA</span>
+        <span className={`px-1.5 py-0.5 rounded transition-colors ${!isJa ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-[var(--soft)]"}`}>EN</span>
+        <span className="text-[var(--soft)]">·</span>
+        <span className={`px-1.5 py-0.5 rounded transition-colors ${isJa  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-[var(--soft)]"}`}>JA</span>
       </span>
     </button>
   );
@@ -359,16 +344,22 @@ function ThemeToggle() {
   return (
     <button onClick={toggleTheme}
       className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg
-                 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
-      title={isDark ? t("Switch to light mode") : t("Switch to dark mode")}>
-      <span className="flex items-center gap-2 text-xs">
+                 text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--hover)] transition-colors group"
+      title={isDark ? t("Switch to light mode") : t("Switch to dark mode")}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+      <span className="flex items-center gap-2 text-xs font-medium">
         {isDark ? <MoonIcon /> : <SunIcon />}
         {isDark ? t("Dark mode") : t("Light mode")}
       </span>
-      <span className={`relative inline-flex h-4 w-7 flex-shrink-0 rounded-full border transition-colors duration-200
-                        ${isDark ? "bg-zinc-800 border-zinc-700" : "bg-amber-400/20 border-amber-400/40"}`}>
-        <span className={`absolute top-0.5 h-3 w-3 rounded-full shadow transition-transform duration-200
-                          ${isDark ? "translate-x-0.5 bg-zinc-400" : "translate-x-3.5 bg-amber-400"}`} />
+      {/* Toggle pill — larger for visibility */}
+      <span className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 transition-colors duration-200
+                        ${isDark
+                          ? "bg-[var(--panel)] border-[var(--line)]"
+                          : "bg-amber-400/30 border-amber-400/60"}`}>
+        <span className={`absolute top-0.5 h-3.5 w-3.5 rounded-full shadow-sm transition-transform duration-200
+                          ${isDark
+                            ? "translate-x-0.5 bg-[var(--muted-2)]"
+                            : "translate-x-[18px] bg-amber-500"}`} />
       </span>
     </button>
   );

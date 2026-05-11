@@ -1,0 +1,493 @@
+openapi: 3.0.0
+info:
+  title: Sample MCP Demo API
+  version: "1.0.0"
+  description: >
+    A tiny FastAPI app with predictable endpoints for MCP Hub testing.
+    Run locally with: uvicorn testing.sample_fastapi_app:app --reload --port 9001
+    Then use http://localhost:9001 as the base URL in Chat Builder.
+
+servers:
+  - url: http://localhost:9001
+
+components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: "Username: testuser / Password: testpass"
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: "Token: mcp-test-bearer-token"
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "Key value: mcp-test-api-key-12345"
+    ApiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key
+      description: "Key value: mcp-test-api-key-12345"
+    OAuth2:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /auth/token
+          scopes: {}
+      description: "Get token from POST /auth/token?username=testuser&password=testpass"
+
+paths:
+
+  # ── General endpoints (no auth) ───────────────────────────────────────────
+
+  /health:
+    get:
+      summary: Health Check
+      operationId: healthCheck
+      description: Returns service health status. No authentication required.
+      tags: [General]
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: sample-fastapi-app
+
+  /weather/{city}:
+    get:
+      summary: Get Current Weather
+      operationId: getWeather
+      description: Returns current weather data for a given city. No authentication required.
+      tags: [General]
+      parameters:
+        - name: city
+          in: path
+          required: true
+          schema:
+            type: string
+          description: City name (e.g. Tokyo, London)
+      responses:
+        "200":
+          description: Current weather for the city
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  city:
+                    type: string
+                  temperature_c:
+                    type: number
+                    example: 29.5
+                  condition:
+                    type: string
+                    example: Clear
+                  updated_at:
+                    type: string
+                    format: date-time
+
+  /forecast/{city}:
+    get:
+      summary: Get Weather Forecast
+      operationId: getForecast
+      description: Returns a 2-day weather forecast for a given city. No authentication required.
+      tags: [General]
+      parameters:
+        - name: city
+          in: path
+          required: true
+          schema:
+            type: string
+          description: City name (e.g. Tokyo, London)
+      responses:
+        "200":
+          description: 2-day forecast for the city
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  city:
+                    type: string
+                  daily:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        day:
+                          type: string
+                          example: Mon
+                        summary:
+                          type: string
+                          example: Warm and clear
+                        high_c:
+                          type: number
+                        low_c:
+                          type: number
+
+  /summary/{city}:
+    get:
+      summary: Get Weather Summary
+      operationId: getWeatherSummary
+      description: Returns a human-readable weather summary and recommendation for a city. No authentication required.
+      tags: [General]
+      parameters:
+        - name: city
+          in: path
+          required: true
+          schema:
+            type: string
+          description: City name (e.g. Tokyo, London)
+      responses:
+        "200":
+          description: Weather summary and clothing recommendation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  city:
+                    type: string
+                  summary:
+                    type: string
+                  recommendation:
+                    type: string
+
+  /chat:
+    post:
+      summary: Chat with Azure OpenAI
+      operationId: chat
+      description: Sends a message to Azure OpenAI and returns a response. Falls back to mock if Azure is not configured. No authentication required.
+      tags: [General]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  description: User message to send to the AI
+                  example: What is the capital of Japan?
+      responses:
+        "200":
+          description: AI response or mock fallback
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  model:
+                    type: string
+                  message:
+                    type: string
+                  response:
+                    type: string
+
+  /reports:
+    post:
+      summary: Create Report
+      operationId: createReport
+      description: Creates a new report from an arbitrary JSON payload. No authentication required.
+      tags: [General]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Any JSON payload to store as the report
+              example:
+                title: Q1 Expenses
+                amount: 4200
+      responses:
+        "200":
+          description: Report created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: created
+                  received:
+                    type: object
+                  id:
+                    type: string
+                    example: rep-0042
+
+  /reports/{report_id}:
+    get:
+      summary: Get Report
+      operationId: getReport
+      description: Retrieves a report by its ID. No authentication required.
+      tags: [General]
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Report ID (e.g. rep-0042)
+      responses:
+        "200":
+          description: Report details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        amount:
+                          type: number
+
+  # ── Auth testing endpoints ────────────────────────────────────────────────
+
+  /auth/info:
+    get:
+      summary: Get All Auth Credentials
+      operationId: authInfo
+      description: Returns all valid test credentials for every auth type in one response. No authentication required.
+      tags: [Auth Testing]
+      responses:
+        "200":
+          description: All valid credentials for testing
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /auth/none:
+    get:
+      summary: No Auth Endpoint
+      operationId: authNone
+      description: Open endpoint — no authentication required. Use to verify the server is reachable.
+      tags: [Auth Testing]
+      responses:
+        "200":
+          description: Access granted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_type:
+                    type: string
+                    example: none
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+
+  /auth/basic:
+    get:
+      summary: Basic Auth Endpoint
+      operationId: authBasic
+      description: "Protected by HTTP Basic Auth. Valid credentials — username: testuser, password: testpass"
+      tags: [Auth Testing]
+      security:
+        - BasicAuth: []
+      responses:
+        "200":
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_type:
+                    type: string
+                    example: basic
+                  status:
+                    type: string
+                    example: ok
+                  authenticated_as:
+                    type: string
+                    example: testuser
+        "401":
+          description: Invalid Basic Auth credentials
+
+  /auth/bearer:
+    get:
+      summary: Bearer Token Endpoint
+      operationId: authBearer
+      description: "Protected by Bearer token. Valid token: mcp-test-bearer-token. Send as: Authorization: Bearer mcp-test-bearer-token"
+      tags: [Auth Testing]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_type:
+                    type: string
+                    example: bearer
+                  status:
+                    type: string
+                    example: ok
+                  token_preview:
+                    type: string
+                    example: mcp-test-b...
+        "401":
+          description: Invalid or missing Bearer token
+
+  /auth/api-key-header:
+    get:
+      summary: API Key Header Endpoint
+      operationId: authApiKeyHeader
+      description: "Protected by API Key in request header. Valid key: mcp-test-api-key-12345. Send as header: X-API-Key: mcp-test-api-key-12345"
+      tags: [Auth Testing]
+      security:
+        - ApiKeyHeader: []
+      responses:
+        "200":
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_type:
+                    type: string
+                    example: api_key_header
+                  status:
+                    type: string
+                    example: ok
+                  key_preview:
+                    type: string
+                    example: mcp-test...
+        "401":
+          description: Invalid or missing API key in header
+
+  /auth/api-key-query:
+    get:
+      summary: API Key Query Param Endpoint
+      operationId: authApiKeyQuery
+      description: "Protected by API Key in query parameter. Valid key: mcp-test-api-key-12345. Send as: ?api_key=mcp-test-api-key-12345"
+      tags: [Auth Testing]
+      security:
+        - ApiKeyQuery: []
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "API key value. Valid: mcp-test-api-key-12345"
+      responses:
+        "200":
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_type:
+                    type: string
+                    example: api_key_query
+                  status:
+                    type: string
+                    example: ok
+                  key_preview:
+                    type: string
+                    example: mcp-test...
+        "401":
+          description: Invalid or missing API key in query param
+
+  /auth/token:
+    post:
+      summary: Get OAuth2 Token
+      operationId: getOAuth2Token
+      description: "OAuth2 token endpoint. POST with username=testuser&password=testpass to receive an access token. Use the returned token on GET /auth/oauth2."
+      tags: [Auth Testing]
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Valid username: testuser"
+        - name: password
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Valid password: testpass"
+      responses:
+        "200":
+          description: Access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: mcp-test-oauth-token
+                  token_type:
+                    type: string
+                    example: bearer
+        "401":
+          description: Invalid credentials
+
+  /auth/oauth2:
+    get:
+      summary: OAuth2 Protected Endpoint
+      operationId: authOAuth2
+      description: "Protected by OAuth2 Bearer token. First call POST /auth/token to get an access token, then pass it as: Authorization: Bearer mcp-test-oauth-token"
+      tags: [Auth Testing]
+      security:
+        - OAuth2: []
+      responses:
+        "200":
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_type:
+                    type: string
+                    example: oauth2
+                  status:
+                    type: string
+                    example: ok
+                  token_preview:
+                    type: string
+                    example: mcp-test-o...
+        "401":
+          description: Invalid or missing OAuth2 token

@@ -321,9 +321,9 @@ export default function HITLValidator() {
     setRecovering(true);
     try {
       await agentApi.discard(sessionId);
-      navigate("/create/upload", { replace: true });
+      navigate("/", { replace: true });
     } catch {
-      navigate("/create/upload", { replace: true });
+      navigate("/", { replace: true });
     }
   }
 
@@ -347,7 +347,7 @@ export default function HITLValidator() {
   const authWarning    = apiAuthType !== "none" && credsEmpty && authMode === "same";
 
   return (
-    <div className="max-w-3xl animate-slide-up">
+    <div className="animate-slide-up">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -562,12 +562,34 @@ export default function HITLValidator() {
         {saving && <SavingSteps />}
 
         <div className="flex gap-3">
-          <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1 py-2.5">
+          <button type="button" onClick={() => navigate(-1)} className="btn-secondary py-2.5 px-5">
             {t("Back")}
           </button>
           <button type="submit" disabled={saving || isFailed} className="btn-primary flex-1 py-2.5">
             {saving ? <><Spinner size={13} /> {t("Running…")}</> : t("Confirm & Save")}
           </button>
+          {!confirmDiscard ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDiscard(true)}
+              disabled={saving}
+              className="btn-danger py-2.5 px-5"
+            >
+              {t("Discard")}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25">
+              <span className="text-xs text-red-400 whitespace-nowrap">{t("Discard?")}</span>
+              <button type="button" onClick={handleDiscard}
+                className="text-xs px-2 py-1 rounded bg-red-600/20 text-red-300 border border-red-500/30 hover:bg-red-600/35 transition-colors">
+                {t("Yes")}
+              </button>
+              <button type="button" onClick={() => setConfirmDiscard(false)}
+                className="text-xs px-2 py-1 rounded bg-[var(--panel)] text-[var(--muted)] border border-[var(--line)] hover:bg-[var(--hover)] transition-colors">
+                {t("No")}
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </div>
@@ -850,7 +872,7 @@ function SuccessPanel({ apiId, session, t }) {
   const toolsUrl   = `http://localhost:8000/api/chatgpt/tools/${apiId}`;
 
   return (
-    <div className="max-w-2xl animate-slide-up">
+    <div className="animate-slide-up">
       {/* Success header */}
       <div className="card p-6 mb-5 border-emerald-500/20 bg-emerald-500/5">
         <div className="flex items-center gap-3 mb-4">

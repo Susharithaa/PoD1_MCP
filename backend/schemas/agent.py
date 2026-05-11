@@ -60,6 +60,8 @@ class SessionResponse(BaseModel):
     api_definition_id: str | None
     error_log: list[Any] | None
     auth_credentials: Any = None
+    api_name: str | None = None
+    original_filename: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -76,6 +78,7 @@ class ApiDefinitionResponse(BaseModel):
     version: str
     source_session_id: str | None
     created_at: datetime
+    has_auth: bool = False
 
     class Config:
         from_attributes = True

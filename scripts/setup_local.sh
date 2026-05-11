@@ -116,7 +116,7 @@ setup_backend() {
 
 # Local no-key defaults added by scripts/setup_local.sh
 OPENAI_API_KEY=mock
-MOCK_LLM=true
+MOCK_LLM=false
 EOF
   else
     log "backend/.env already exists; leaving it unchanged"

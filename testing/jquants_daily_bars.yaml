@@ -2,9 +2,20 @@ openapi: 3.0.3
 info:
   title: J-Quants Japan Stock Daily Bars API
   version: 1.0.0
-  description: "Fetch daily OHLCV (Open, High, Low, Close, Volume) bar data for Japanese stocks listed on the Tokyo Stock Exchange via J-Quants. Auth is sent as the x-api-key request header. DATA WINDOW: data is available from 2024-02-11 up to (today minus 3 months). For example if today is 2026-05-06, data goes from 2024-02-11 to 2026-02-06. Dates OLDER than 3 months ARE available. Dates NEWER than 3 months ago are NOT available. June 2025, July 2025, December 2025 — these are all OLDER than 3 months and ARE fully accessible."
+  description: "Fetch daily OHLCV (Open, High, Low, Close, Volume) bar data for Japanese stocks listed on the Tokyo Stock Exchange via J-Quants. AUTH: Pass your permanent J-Quants API key in the request header as x-api-key. Example: x-api-key: <your-api-key>. DATA WINDOW: data is available from 2024-02-11 up to (today minus 3 months). For example if today is 2026-05-06, data goes from 2024-02-11 to 2026-02-06. Dates OLDER than 3 months ARE available. Dates NEWER than 3 months ago are NOT available. June 2025, July 2025, December 2025 — these are all OLDER than 3 months and ARE fully accessible."
 servers:
   - url: https://api.jquants.com
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: "Permanent J-Quants API key passed as x-api-key request header."
+
+security:
+  - ApiKeyAuth: []
 paths:
   /v2/equities/bars/daily:
     get:

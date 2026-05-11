@@ -161,8 +161,8 @@ async def start_upload(
         await f.write(content)
 
     session = await orch.start(file_path=saved_path)
-    # Attach user_id after session is created
     session.user_id = current_user.id
+    session.original_filename = file.filename
     db.add(session)
     db.commit()
     return session

@@ -89,7 +89,7 @@ For local no-key LLM testing:
 
 ```env
 OPENAI_API_KEY=mock
-MOCK_LLM=true
+MOCK_LLM=false
 ```
 
 For real OpenAI calls:
@@ -185,7 +185,7 @@ There is no frontend test script in `frontend/package.json` at the time of writi
 - `backend/main.py` creates the FastAPI app, configures CORS, request context middleware, rate-limit handling, OpenTelemetry setup, static serving for `testing/`, and all routers.
 - Startup runs logging setup, server migrations, and `init_db()`.
 - `backend/database.py` creates the SQLAlchemy engine and still contains defensive column-add migrations for older SQLite databases.
-- `backend/llm/client.py` uses `gpt-4o` for OpenAI calls and falls back to deterministic mock responses when `MOCK_LLM=true` or the key is missing/placeholder-like.
+- `backend/llm/client.py` uses `gpt-4o` for OpenAI calls and falls back to deterministic mock responses when `MOCK_LLM=false` or the key is missing/placeholder-like.
 - `backend/agents/orchestrator.py` owns the session state machine:
   `INIT -> CLASSIFYING -> PARSING -> SCHEMA_GENERATING -> RECONCILING -> CONFIDENCE_SCORING -> HITL_PENDING -> VALIDATING -> API_TESTING -> SAVING -> SAVED`.
 - Validation failures or blocking API-test verdicts return the session to `HITL_PENDING`.

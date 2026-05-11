@@ -8,9 +8,19 @@ Then use it as the base URL in Chat Builder:
 """
 
 import os
+import base64
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Security, Query
+from fastapi.security import (
+    HTTPBasic,
+    HTTPBasicCredentials,
+    HTTPBearer,
+    HTTPAuthorizationCredentials,
+    APIKeyHeader,
+    APIKeyQuery,
+    OAuth2PasswordBearer,
+)
 from pydantic import BaseModel, Field
 
 try:
@@ -25,6 +35,62 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# ---------------------------------------------------------------------------
+# Auth scheme definitions
+# ---------------------------------------------------------------------------
+
+basic_scheme = HTTPBasic(auto_error=False)
+bearer_scheme = HTTPBearer(auto_error=False)
+api_key_header_scheme = APIKeyHeader(name="X-API-Key", auto_error=False)
+api_key_query_scheme = APIKeyQuery(name="api_key", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
+
+# Dummy credentials — good enough for MCP Hub testing
+VALID_USERNAME = "testuser"
+VALID_PASSWORD = "testpass"
+VALID_BEARER_TOKEN = "mcp-test-bearer-token"
+VALID_API_KEY = "mcp-test-api-key-12345"
+VALID_OAUTH_TOKEN = "mcp-test-oauth-token"
+
+
+# ---------------------------------------------------------------------------
+# Auth validators
+# ---------------------------------------------------------------------------
+
+def verify_basic(credentials: HTTPBasicCredentials = Depends(basic_scheme)):
+    if not credentials or credentials.username != VALID_USERNAME or credentials.password != VALID_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid Basic Auth credentials",
+                            headers={"WWW-Authenticate": "Basic"})
+    return credentials.username
+
+
+def verify_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    if not credentials or credentials.credentials != VALID_BEARER_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing Bearer token")
+    return credentials.credentials
+
+
+def verify_api_key_header(api_key: str = Security(api_key_header_scheme)):
+    if api_key != VALID_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key in header")
+    return api_key
+
+
+def verify_api_key_query(api_key: str = Security(api_key_query_scheme)):
+    if api_key != VALID_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key in query param")
+    return api_key
+
+
+def verify_oauth2(token: str = Depends(oauth2_scheme)):
+    if token != VALID_OAUTH_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing OAuth2 token")
+    return token
+
+
+# ---------------------------------------------------------------------------
+# Existing endpoints (no auth)
+# ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
@@ -126,4 +192,98 @@ def get_report(report_id: str):
             {"name": "expense", "amount": 42},
             {"name": "travel", "amount": 18},
         ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Auth testing endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/auth/none", tags=["Auth Testing"])
+def auth_none():
+    """No authentication required."""
+    return {"auth_type": "none", "status": "ok", "message": "Access granted without authentication"}
+
+
+@app.get("/auth/basic", tags=["Auth Testing"])
+def auth_basic(username: str = Depends(verify_basic)):
+    """Basic Auth — requires Authorization: Basic <base64(user:pass)>
+    Valid credentials: testuser / testpass
+    """
+    return {"auth_type": "basic", "status": "ok", "authenticated_as": username}
+
+
+@app.get("/auth/bearer", tags=["Auth Testing"])
+def auth_bearer(token: str = Depends(verify_bearer)):
+    """Bearer Token — requires Authorization: Bearer mcp-test-bearer-token"""
+    return {"auth_type": "bearer", "status": "ok", "token_preview": token[:10] + "..."}
+
+
+@app.get("/auth/api-key-header", tags=["Auth Testing"])
+def auth_api_key_header(api_key: str = Depends(verify_api_key_header)):
+    """API Key via Header — requires X-API-Key: mcp-test-api-key-12345"""
+    return {"auth_type": "api_key_header", "status": "ok", "key_preview": api_key[:8] + "..."}
+
+
+@app.get("/auth/api-key-query", tags=["Auth Testing"])
+def auth_api_key_query(api_key: str = Depends(verify_api_key_query)):
+    """API Key via Query Param — requires ?api_key=mcp-test-api-key-12345"""
+    return {"auth_type": "api_key_query", "status": "ok", "key_preview": api_key[:8] + "..."}
+
+
+@app.post("/auth/token", tags=["Auth Testing"])
+def oauth2_token(username: str = Query(...), password: str = Query(...)):
+    """OAuth2 token endpoint — POST /auth/token?username=testuser&password=testpass
+    Returns a bearer token to use with /auth/oauth2.
+    """
+    if username != VALID_USERNAME or password != VALID_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {
+        "access_token": VALID_OAUTH_TOKEN,
+        "token_type": "bearer",
+    }
+
+
+@app.get("/auth/oauth2", tags=["Auth Testing"])
+def auth_oauth2(token: str = Depends(verify_oauth2)):
+    """OAuth2 Client — first get a token from POST /auth/token, then pass it as Bearer."""
+    return {"auth_type": "oauth2", "status": "ok", "token_preview": token[:10] + "..."}
+
+
+# ---------------------------------------------------------------------------
+# Auth test summary
+# ---------------------------------------------------------------------------
+
+@app.get("/auth/info", tags=["Auth Testing"])
+def auth_info():
+    """Returns the valid test credentials for all auth types."""
+    return {
+        "none": {"endpoint": "/auth/none", "credentials": "not required"},
+        "basic_auth": {
+            "endpoint": "/auth/basic",
+            "username": VALID_USERNAME,
+            "password": VALID_PASSWORD,
+            "header_example": f"Authorization: Basic {base64.b64encode(f'{VALID_USERNAME}:{VALID_PASSWORD}'.encode()).decode()}",
+        },
+        "bearer_token": {
+            "endpoint": "/auth/bearer",
+            "token": VALID_BEARER_TOKEN,
+            "header_example": f"Authorization: Bearer {VALID_BEARER_TOKEN}",
+        },
+        "api_key_header": {
+            "endpoint": "/auth/api-key-header",
+            "api_key": VALID_API_KEY,
+            "header_example": f"X-API-Key: {VALID_API_KEY}",
+        },
+        "api_key_query_param": {
+            "endpoint": "/auth/api-key-query",
+            "api_key": VALID_API_KEY,
+            "query_example": f"/auth/api-key-query?api_key={VALID_API_KEY}",
+        },
+        "oauth2_client": {
+            "token_endpoint": "/auth/token",
+            "protected_endpoint": "/auth/oauth2",
+            "step1": f"POST /auth/token?username={VALID_USERNAME}&password={VALID_PASSWORD}",
+            "step2": f"GET /auth/oauth2 with Authorization: Bearer {VALID_OAUTH_TOKEN}",
+        },
     }

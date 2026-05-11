@@ -1,0 +1,29 @@
+openapi: 3.0.0
+info:
+  title: Get Employee Details
+  description: Get employee details by employee ID from Employee
+  version: "1.0.0"
+
+servers:
+  - url: http://employee-api-test:8001
+
+paths:
+  /employees/{employee_id}:
+    get:
+      summary: Get Employee Details
+      description: Get employee details by employee ID from Employee
+      operationId: get-employee
+      parameters:
+        - name: employee_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Employee ID
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object

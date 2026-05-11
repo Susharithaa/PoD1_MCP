@@ -1,14 +1,43 @@
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from config import settings
 
 
+BACKEND_DIR = Path(__file__).resolve().parent
+
+
+def _resolve_sqlite_url(url: str) -> str:
+    """
+    Keep SQLite file databases on a stable on-disk path.
+
+    Relative sqlite URLs are resolved under backend/data so the database
+    persists across launches regardless of the current working directory.
+    """
+    if not url.startswith("sqlite:") or ":memory:" in url:
+        return url
+
+    if url == "sqlite:///./mcp_hub.db":
+        relative_path = Path("data") / "mcp_hub.db"
+    elif url == "sqlite:///./data/mcp_hub.db":
+        relative_path = Path("data") / "mcp_hub.db"
+    else:
+        return url
+
+    data_dir = BACKEND_DIR / relative_path.parent
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return f"sqlite:///{(BACKEND_DIR / relative_path).resolve()}"
+
+
 def _make_engine():
     url = settings.database_url
-    if url == "sqlite:///./mcp_hub.db" and os.getenv("MCP_HUB_CONTAINER"):
-        os.makedirs(settings.data_dir, exist_ok=True)
-        url = f"sqlite:///{os.path.join(settings.data_dir, 'mcp_hub.db')}"
+    if url.startswith("sqlite:"):
+        if os.getenv("MCP_HUB_CONTAINER"):
+            os.makedirs(settings.data_dir, exist_ok=True)
+            url = f"sqlite:///{os.path.join(settings.data_dir, 'mcp_hub.db')}"
+        else:
+            url = _resolve_sqlite_url(url)
     kwargs: dict = {
         "echo": False,
         "pool_pre_ping": True,
@@ -74,9 +103,10 @@ def _migrate():
     if "agent_sessions" in tables:
         session_cols = {c["name"] for c in inspector.get_columns("agent_sessions")}
         for col, col_type in {
-            "api_test_results": "TEXT",
-            "auth_credentials": "TEXT",
-            "user_id":          "TEXT",
+            "api_test_results":   "TEXT",
+            "auth_credentials":   "TEXT",
+            "user_id":            "TEXT",
+            "original_filename":  "TEXT",
         }.items():
             if col not in session_cols:
                 _add_col("agent_sessions", col, col_type)
